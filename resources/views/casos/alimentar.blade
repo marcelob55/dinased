@@ -1,0 +1,80 @@
+@extends('layouts.app')
+
+@section('content')
+<h2>Alimentar Detalle — {{ $caso->numero_caso }}</h2>
+
+<form method="POST" action="{{ route('detalle.store', $caso) }}">
+    @csrf
+
+    <label>Verificación</label>
+    <input type="text" name="verificacion" value="{{ old('verificacion', $detalle->verificacion ?? '') }}">
+
+    <label>Código ECU</label>
+    <input type="text" name="codigo_ecu" value="{{ old('codigo_ecu', $detalle->codigo_ecu ?? '') }}">
+
+    <label>Zona</label>
+    <input type="text" name="zona" value="{{ old('zona', $detalle->zona ?? '') }}">
+
+    <label>Subzona</label>
+    <input type="text" name="subzona" value="{{ old('subzona', $detalle->subzona ?? '') }}">
+
+    <label>Distrito</label>
+    <input type="text" name="distrito" value="{{ old('distrito', $detalle->distrito ?? '') }}">
+
+    <label>Circuito</label>
+    <input type="text" name="circuito" value="{{ old('circuito', $detalle->circuito ?? '') }}">
+
+    <label>Subcircuito</label>
+    <input type="text" name="subcircuito" value="{{ old('subcircuito', $detalle->subcircuito ?? '') }}">
+
+    <label>Espacio</label>
+    <input type="text" name="espacio" value="{{ old('espacio', $detalle->espacio ?? '') }}">
+
+    <label>Área</label>
+    <input type="text" name="area" value="{{ old('area', $detalle->area ?? '') }}">
+
+    <label>Lugar del hecho</label>
+    <input type="text" name="lugar_hecho" value="{{ old('lugar_hecho', $detalle->lugar_hecho ?? '') }}">
+
+    <label>Fecha del hecho</label>
+    <input type="date" name="fecha_hecho" value="{{ old('fecha_hecho', $detalle->fecha_hecho ?? '') }}">
+
+    <label>Hora del hecho</label>
+    <input type="time" name="hora_hecho" value="{{ old('hora_hecho', $detalle->hora_hecho ?? '') }}">
+
+    <label>Coordenadas</label>
+    <input type="text" name="coordenadas" value="{{ old('coordenadas', $detalle->coordenadas ?? '') }}">
+
+    <label>Circunstancias</label>
+    <textarea name="circunstancias">{{ old('circunstancias', $detalle->circunstancias ?? '') }}</textarea>
+
+    <label>Entrevistas</label>
+    <div id="entrevistas">
+        @php
+            $entrevistas = old('entrevistas', $detalle->entrevistas ?? []);
+            if (!is_array($entrevistas)) { $entrevistas = [$entrevistas]; }
+        @endphp
+        @foreach($entrevistas as $e)
+            <input type="text" name="entrevistas[]" value="{{ $e }}">
+        @endforeach
+        <input type="text" name="entrevistas[]" placeholder="Nueva entrevista">
+    </div>
+
+    <label>Actividades</label>
+    <div id="actividades">
+        @php
+            $actividades = old('actividades', $detalle->actividades ?? []);
+            if (!is_array($actividades)) { $actividades = [$actividades]; }
+        @endphp
+        @foreach($actividades as $a)
+            <input type="text" name="actividades[]" value="{{ $a }}">
+        @endforeach
+        <input type="text" name="actividades[]" placeholder="Nueva actividad">
+    </div>
+
+    <label>Reporta</label>
+    <input type="text" name="reporta" value="{{ old('reporta', $detalle->reporta ?? '') }}">
+
+    <button type="submit">Guardar</button>
+</form>
+@endsection
