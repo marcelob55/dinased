@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Auditoria extends Model
 {
-    use HasFactory;
+    protected $table = 'auditoria'; // ajusta al nombre real
+    public $timestamps = false;
+
+    // Ajusta columnas que vayas a insertar
+    protected $fillable = [
+        // 'caso_id','accion','usuario','ip','detalle','fecha'
+    ];
 }
