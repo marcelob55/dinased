@@ -1,0 +1,206 @@
+:root{
+  --bg: #f7f8fb;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --primary: #22c55e; /* verde DINASED */
+  --primary-600:#16a34a;
+  --ring:#a7f3d0;
+  --line:#e5e7eb;
+  --shadow: 0 10px 25px rgba(0,0,0,.06);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);font:16px/1.45 var(--font);
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+}
+
+/* Header */
+.site-header{
+  position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 20px;
+}
+.brand{display:flex;align-items:center;gap:12px;min-height:60px}
+.logo{height:46px;width:auto;object-fit:contain}
+.logo--right{margin-left:-6px}
+.brand__title{font-weight:800;letter-spacing:.2px;font-size:14px;line-height:1.2;text-transform:uppercase}
+
+.header-actions{display:flex;align-items:center;gap:10px}
+
+.container{max-width:980px;margin:24px auto;padding:0 16px}
+
+.site-footer{
+  margin-top:36px;border-top:1px solid var(--line);padding:16px;color:var(--muted);text-align:center;
+}
+
+/* Card */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:22px;
+}
+
+/* Auth layout */
+.auth{display:grid;place-items:center;min-height:calc(100dvh - 140px)}
+.auth__card{width:100%;max-width:460px}
+
+/* Typography */
+.h3{margin:0 0 10px 0;font-size:22px}
+p,ul{margin:0}
+
+/* Form */
+.form{display:grid;gap:14px}
+.field{display:grid;gap:6px}
+.field__label{font-size:13px;color:var(--muted)}
+.input{
+  width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;
+  outline:0;transition:border-color .2s, box-shadow .2s;
+}
+.input:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--ring)}
+.input--ghost{border-radius:12px 0 0 12px;border-right:0}
+
+.input-group{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.input-group:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px var(--ring)}
+
+.btn{
+  --bg:#f3f4f6; --fg:#111827; --bd:var(--line);
+  appearance:none;border:1px solid var(--bd);background:var(--bg);color:var(--fg);
+  padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;transition:.15s;
+}
+.btn:hover{filter:brightness(.98)}
+.btn:active{transform:translateY(1px)}
+
+.btn--primary{--bg:var(--primary);--fg:#fff;--bd:transparent}
+.btn--primary:hover{background:var(--primary-600)}
+.btn--ghost{--bg:#fff;--bd:transparent;border-left:1px solid var(--line);border-radius:0 12px 12px 0}
+
+.btn--pill{border-radius:var(--radius-pill);padding:9px 16px;border:0;background:var(--primary);color:#fff;display:inline-flex;gap:8px;align-items:center}
+.btn--pill:hover{background:var(--primary-600)}
+
+.w-full{width:100%}
+
+.check{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+
+/* Alerts */
+.alert{padding:12px;border-radius:12px;border:1px solid var(--line);background:#fff}
+.alert--error{border-color:#fecaca;background:#fff1f2}
+
+/* Icons (emoji fallback) */
+.i{display:inline-block}
+.i-home::before{content:"🏠"}
+.i-eye::before{content:"👁️"}
+
+@media (max-width: 720px){
+  .brand__title{font-size:12px}
+  .logo{height:40px}
+}
+
+
+
+
+
+
+/* === Grid fino para formularios === */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+}
+
+.col-12 { grid-column: span 12; }
+.col-8  { grid-column: span 8; }
+.col-6  { grid-column: span 6; }
+.col-4  { grid-column: span 4; }
+.col-3  { grid-column: span 3; }
+
+@media (max-width: 900px) {
+  .col-8, .col-6, .col-4, .col-3 { grid-column: span 12; }
+}
+
+/* Campos */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label { font-weight: 600; font-size: .95rem; }
+.field input[type="text"],
+.field input[type="date"],
+.field input[type="time"],
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d7dde5;
+  border-radius: 10px;
+  background: #fff;
+}
+
+/* Textareas grandes */
+.textarea-lg  { min-height: 160px; }
+.textarea-xl  { min-height: 220px; }
+.textarea-xxl { min-height: 300px; }
+
+/* Separadores de sección */
+.section { margin: 28px 0; }
+.section h3 { margin: 0 0 14px; font-size: 1.1rem; }
+
+
+/* ===== Tablas de víctimas / heridos ===== */
+table th, table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+table th { font-weight: 600; text-align: left; }
+
+table .fld {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d7dde5;
+  border-radius: 10px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.btn-toggle-more, .btn-del-row{
+  appearance: none;
+  border: 1px solid #d7dde5;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-del-row{ color:#b91c1c; border-color:#fecaca; }
+
+/* Cuadricula para el bloque "Más" */
+.more-grid{
+  display:grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 900px){
+  .more-grid{ grid-template-columns: 1fr; }
+}
+
+/* Tamaños de textareas grandes (reutilizadas abajo) */
+.textarea-lg  { min-height: 160px; }
+.textarea-xl  { min-height: 220px; }
+.textarea-xxl { min-height: 300px; }
+
+/* Grid de formularios (12 columnas) — por si no estaba ya al final */
+.form-grid{ display:grid; grid-template-columns: repeat(12,1fr); gap:12px; }
+.col-12{ grid-column: span 12; } .col-8{ grid-column: span 8; }
+.col-6{ grid-column: span 6; }  .col-4{ grid-column: span 4; }
+.col-3{ grid-column: span 3; }
+@media (max-width:900px){
+  .col-8,.col-6,.col-4,.col-3{ grid-column: span 12; }
+}
+
+
+/* Altura y borde del mapa */
+#map{
+  height: 360px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+@media (max-width: 720px){ #map{ height: 300px; } }

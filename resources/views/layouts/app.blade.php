@@ -2,66 +2,79 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Sistema Casos DINASED</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>@yield('title','Sistema de Casos DINASED')</title>
 
-  <style>
-    :root { --mxw: 1100px; }
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, Arial, sans-serif; margin:0; color:#111; }
-    header { background:#f7f7f7; border-bottom:1px solid #e5e5e5; }
-    .wrap { max-width: var(--mxw); margin:0 auto; padding:14px 16px; }
-
-    nav a { margin-right: 12px; color:#0366d6; text-decoration:none; }
-    nav a:hover { text-decoration:underline; }
-    nav form { display:inline; }
-
-    main.wrap { padding-top:18px; padding-bottom:28px; }
-
-    table { width:100%; border-collapse: collapse; }
-    th, td { border:1px solid #ddd; padding:8px; }
-    th { background:#f5f5f5; text-align:left; }
-    .alert { background:#e7f7ec; border:1px solid #b8e0c6; color:#155724; padding:8px 12px; margin:12px 0; border-radius:6px; }
-
-    label { display:block; margin-top:10px; }
-    input, textarea, select { width:100%; padding:8px; border:1px solid #cfcfcf; border-radius:6px; }
-    button { margin-top:12px; padding:10px 16px; cursor:pointer; border:1px solid #cfcfcf; border-radius:8px; background:#fff; }
-    button:hover { background:#f6f6f6; }
-  </style>
-
-  {{-- Estilos que empujan las vistas (Leaflet CSS, etc.) --}}
+  <link rel="icon" href="{{ asset('assets/img/favicon.png') }}">
+  <link rel="stylesheet" href="{{ asset('assets/css/base.css') }}">
   @stack('styles')
 </head>
 <body>
-
-  <header>
-    <div class="wrap">
-      <nav>
-        <a href="{{ route('casos.index') }}">Casos</a>
-
-        @auth
-          @if(auth()->user()->rol === 'generador')
-            <a href="{{ route('casos.create') }}">Nuevo caso</a>
-          @endif
-
-          <form action="{{ route('logout') }}" method="POST">
-            @csrf
-            <button type="submit">Salir</button>
-          </form>
-        @endauth
-      </nav>
+  {{-- ===== Header ===== --}}
+  <header class="site-header">
+    <div class="brand">
+      <img src="{{ asset('assets/img/escudo-policia.jpg') }}" alt="Escudo Policía" class="logo">
+      <img src="{{ asset('assets/img/dinased.jpg') }}" alt="DINASED" class="logo logo--right">
+      <div class="brand__text">
+        <span class="brand__title">
+          DIRECCIÓN NACIONAL DE INVESTIGACIÓN DE MUERTES VIOLENTAS Y DESAPARECIDOS
+        </span>
+      </div>
     </div>
+
+    {{-- Menú principal --}}
+    <nav class="header-actions">
+      @auth
+        <a href="{{ route('casos.index') }}"
+           class="btn btn--link {{ request()->routeIs('casos.index') ? 'is-active' : '' }}">Casos</a>
+
+        <a href="{{ route('casos.create') }}"
+           class="btn btn--link {{ request()->routeIs('casos.create') ? 'is-active' : '' }}">Nuevo caso</a>
+
+        <form action="{{ route('logout') }}" method="POST" style="display:inline">
+          @csrf
+          <button type="submit" class="btn btn--pill btn--outline">Salir</button>
+        </form>
+      @endauth
+
+      @guest
+        <a class="btn btn--pill" href="{{ route('casos.index') }}">
+          <span class="i i-home"></span> Inicio
+        </a>
+      @endguest
+    </nav>
   </header>
 
-  <main class="wrap">
-    @if(session('ok'))
-      <div class="alert">{{ session('ok') }}</div>
+  {{-- ===== Contenedor principal ===== --}}
+  <main class="container">
+
+    {{-- Mensajes flash / errores globales (opcionales, pero muy útiles) --}}
+    @if (session('ok'))
+      <div class="alert alert--success">{{ session('ok') }}</div>
+    @endif
+    @if (session('error'))
+      <div class="alert alert--danger">{{ session('error') }}</div>
+    @endif
+    @if ($errors->any())
+      <div class="alert alert--danger">
+        <strong>Revisa:</strong>
+        <ul style="margin: .5rem 0 0 1rem;">
+          @foreach ($errors->all() as $e)
+            <li>{{ $e }}</li>
+          @endforeach
+        </ul>
+      </div>
     @endif
 
     @yield('content')
   </main>
 
-  {{-- Scripts que empujan las vistas (Leaflet JS, etc.) --}}
+  {{-- ===== Footer ===== --}}
+  <footer class="site-footer">
+    <small>© {{ date('Y') }} DINASED — Sistema de Casos</small>
+  </footer>
+
+  <script src="{{ asset('assets/js/app.js') }}"></script>
   @stack('scripts')
 </body>
 </html>
