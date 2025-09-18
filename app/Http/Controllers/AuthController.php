@@ -2,39 +2,44 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    // Muestra el formulario de login (usa tu vista actual)
+    // Muestra el login
     public function form()
     {
         return view('auth.login');
     }
 
-    // Procesa login
-public function login(Request $request)
-{
-    $request->validate([
-        'cedula'     => ['required','string'],
-        'contrasena' => ['required','string'],
-    ]);
+    // Procesa login (usa 'cedula' + 'contrasena' del form)
+    public function login(Request $request)
+    {
+        $request->validate([
+            'cedula'     => ['required','string'],
+            'contrasena' => ['required','string'],
+        ]);
 
-    // La clave se llama **password** aunque en BD sea 'contrasena'
-    $credentials = ['cedula' => $request->cedula, 'password' => $request->contrasena];
+        // OJO: la clave debe llamarse 'password' para Auth::attempt,
+        // aunque en BD la columna sea 'contrasena'. El modelo Usuario
+        // define getAuthPassword() para apuntar a esa columna.
+        $credentials = [
+            'cedula'   => $request->cedula,
+            'password' => $request->contrasena,
+        ];
 
-    if (Auth::attempt($credentials, $request->boolean('remember'))) {
-        $request->session()->regenerate();
-        return redirect()->intended(route('casos.index'));
+        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            $request->session()->regenerate();
+            return redirect()->intended(route('casos.index'));
+        }
+
+        return back()
+            ->withErrors(['cedula' => 'Credenciales inválidas'])
+            ->onlyInput('cedula');
     }
 
-    return back()->withErrors(['cedula' => 'Credenciales inválidas'])->onlyInput('cedula');
-}
-
-
+    // Cierra sesión
     public function logout(Request $request)
     {
         Auth::logout();
@@ -43,13 +48,3 @@ public function login(Request $request)
         return redirect()->route('login');
     }
 }
-
-    public function logout(Request $r)
-    {
-        Auth::logout();
-        $r->session()->invalidate();
-        $r->session()->regenerateToken();
-        return redirect()->route('login'); // coincide con routes/web.php recomendado
-    }
-}
-
