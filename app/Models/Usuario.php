@@ -2,27 +2,28 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable; // 
+use Illuminate\Notifications\Notifiable;
 
-class Usuario extends Model
+class Usuario extends Authenticatable   // ya no Model
 {
-    use HasFactory;
+    use Notifiable;
 
-    protected $table = 'usuarios';      // tabla existente
+    protected $table = 'usuarios';
     protected $primaryKey = 'id';
-    public $timestamps = false;         // tu tabla no usa created_at/updated_at
+    public $timestamps = false;
 
     protected $fillable = [
         'nombres','apellidos','nickname','celular','cedula','contrasena',
-        'correo','agencia','equipo','caso','numero_caso','rol',
+        'correo','agencia','equipo','numero_caso','rol',
         'fecha_registro','ultima_conexion','ip_conexion',
     ];
 
     protected $hidden = ['contrasena'];
 
-    protected $casts = [
-        'fecha_registro' => 'datetime',
-        'ultima_conexion'=> 'datetime',
-    ];
+    // Laravel llamará a este método para validar el password
+    public function getAuthPassword()
+    {
+        return $this->contrasena;
+    }
 }

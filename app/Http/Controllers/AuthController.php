@@ -16,48 +16,40 @@ class AuthController extends Controller
     }
 
     // Procesa login
-    public function login(Request $r)
+    public function login(Request $request)
     {
-        // Acepta tanto (usuario, clave) como (cedula, contrasena) para no romper formularios viejos
-        $usuarioInput = $r->input('usuario', $r->input('cedula'));
-        $claveInput   = $r->input('clave',   $r->input('contrasena'));
-
-        $r->merge(['usuario_normalizado' => $usuarioInput, 'clave_normalizada' => $claveInput]);
-        $r->validate([
-            'usuario_normalizado' => ['required','string'],
-            'clave_normalizada'   => ['required','string'],
-        ], [], [
-            'usuario_normalizado' => 'usuario',
-            'clave_normalizada'   => 'clave',
+        $request->validate([
+            'cedula'     => ['required','string'],
+            'contrasena' => ['required','string'],
         ]);
 
-        // Busca por cédula o nickname (puedes añadir correo si lo usas)
-        $user = Usuario::where('cedula', $usuarioInput)
-                ->orWhere('nickname', $usuarioInput)
-                ->first();
+        // IMPORTANTÍSIMO: la clave debe llamarse 'password'
+        // aunque en BD tu columna sea 'contrasena'.
+        $credentials = [
+            'cedula'   => $request->cedula,
+            'password' => $request->contrasena,
+        ];
 
-        // Contraseñas en tu tabla deben estar en bcrypt.
-        // Si aún tienes usuarios con texto plano, dímelo y te paso migración para re-hashearlos.
-        if ($user && Hash::check($claveInput, $user->contrasena)) {
-            Auth::login($user, $r->boolean('remember'));   // remember opcional
+        $remember = $request->boolean('remember');
+
+        if (Auth::attempt($credentials, $remember)) {
+            $request->session()->regenerate();
             return redirect()->intended(route('casos.index'));
         }
 
-        // (Opcional) Backdoor temporal como en tu login.php antiguo — desactívalo cuando no lo necesites.
-        /*
-        if ($usuarioInput === 'admin' && $claveInput === 'locemarB5.') {
-            $admin = $user ?: Usuario::first(); // elige a quién loguear
-            if ($admin) {
-                Auth::login($admin);
-                return redirect()->intended(route('casos.index'));
-            }
-        }
-        */
-
         return back()
-            ->withErrors(['usuario' => 'Credenciales incorrectas'])
-            ->withInput(['usuario' => $usuarioInput]);
+            ->withErrors(['cedula' => 'Credenciales inválidas'])
+            ->onlyInput('cedula');
     }
+
+    public function logout(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('login');
+    }
+}
 
     public function logout(Request $r)
     {
