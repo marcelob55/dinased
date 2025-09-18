@@ -5,6 +5,7 @@ use App\Http\Controllers\CasoController;
 use App\Http\Controllers\DetalleCasoController;
 use App\Http\Controllers\Auth\RegistroUsuarioController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SeguimientoJudicialController;
 
 // Invitados (no autenticados)
 Route::middleware('guest')->group(function () {
@@ -43,6 +44,16 @@ Route::middleware('auth')->group(function () {
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+	
+	
+	
+	Route::get ('/casos/{caso}/seguimiento-judicial', [SeguimientoJudicialController::class, 'create'])
+    ->whereNumber('caso')->name('segjudicial.create');
+
+Route::post('/casos/{caso}/seguimiento-judicial', [SeguimientoJudicialController::class, 'store'])
+    ->whereNumber('caso')->name('segjudicial.store');
+	
+	
 });
 
 // /home legado

@@ -29,4 +29,11 @@ class Caso extends Model
     {
         return $this->hasMany(Victima::class, 'caso_id');
     }
+	
+	public function seguimiento()
+	{
+		return $this->hasOne(\App\Models\Seguimiento::class, 'caso_id');
+	}
+
+	
 }

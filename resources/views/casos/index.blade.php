@@ -26,8 +26,7 @@
         <td class="actions">
           <a href="{{ route('casos.show', $c) }}">Ver</a>
           <a href="{{ route('detalle.edit', $c) }}">Editar</a>
-		  <a href="{{ route('detalle.edit', $c) }}">Asignar</a>
-		  <a href="{{ route('detalle.edit', $c) }}">Eliminar</a>
+		  <a href="{{ route('segjudicial.create', $c->id) }}">Seg. judicial</a>
         </td>
       </tr>
     @endforeach

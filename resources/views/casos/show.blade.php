@@ -15,9 +15,15 @@
     </a>
 	
 	<a class="btn btn-sm btn-primary" target="_blank"
-   href="{{ route('casos.pdf', $caso) }}">
-  PDF (narrativa)
-</a>
+		href="{{ route('casos.pdf', $caso) }}">
+		PDF (narrativa)
+	</a>
+	
+	<a href="{{ route('segjudicial.create', $caso->id) }}"
+		class="btn btn-outline-secondary">
+		Seguimiento judicial
+	</a>
+
 
 	
 	
