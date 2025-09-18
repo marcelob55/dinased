@@ -9,7 +9,10 @@
       <div class="alert alert--error">
         <strong>Revisa:</strong>
         <ul>
-          @foreach ($errors->all() as $e) <li>{{ $e }}</li> @endforeach
+         @foreach ($errors->all() as $error)
+			<li>{{ $error }}</li>       {{-- ✅ muestra el mensaje tal cual --}}
+		@endforeach
+
         </ul>
       </div>
     @endif

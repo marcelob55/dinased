@@ -14,30 +14,37 @@ class AuthController extends Controller
     }
 
     // Procesa login (usa 'cedula' + 'contrasena' del form)
-    public function login(Request $request)
-    {
-        $request->validate([
+public function login(Request $request)
+{
+    // Mensajes claros (evita que aparezca "validation.required")
+    $request->validate(
+        [
             'cedula'     => ['required','string'],
             'contrasena' => ['required','string'],
-        ]);
+        ],
+        [
+            'cedula.required'     => 'Ingresa tu usuario (cédula o nickname).',
+            'contrasena.required' => 'Ingresa tu contraseña.',
+        ]
+    );
 
-        // OJO: la clave debe llamarse 'password' para Auth::attempt,
-        // aunque en BD la columna sea 'contrasena'. El modelo Usuario
-        // define getAuthPassword() para apuntar a esa columna.
-        $credentials = [
-            'cedula'   => $request->cedula,
-            'password' => $request->contrasena,
-        ];
+    $login    = $request->cedula;               // aquí llega cédula o nickname
+    $password = $request->contrasena;
+    $remember = $request->boolean('remember');
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            $request->session()->regenerate();
-            return redirect()->intended(route('casos.index'));
-        }
-
-        return back()
-            ->withErrors(['cedula' => 'Credenciales inválidas'])
-            ->onlyInput('cedula');
+    // Intenta por cédula, si no por nickname (usa getAuthPassword => 'contrasena')
+    if (
+        Auth::attempt(['cedula' => $login, 'password' => $password], $remember) ||
+        Auth::attempt(['nickname' => $login, 'password' => $password], $remember)
+    ) {
+        $request->session()->regenerate();
+        return redirect()->intended(route('casos.index'));
     }
+
+    return back()
+        ->withErrors(['cedula' => 'Usuario o contraseña incorrectos.'])
+        ->onlyInput('cedula');
+}
 
     // Cierra sesión
     public function logout(Request $request)
