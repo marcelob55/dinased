@@ -3,8 +3,21 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CasoController;
 use App\Http\Controllers\DetalleCasoController;
+use App\Http\Controllers\Auth\RegistroUsuarioController;
 use Illuminate\Support\Facades\Route;
 
+// Invitados (no autenticados)
+Route::middleware('guest')->group(function () {
+    // Login
+    Route::get('/login',  [AuthController::class, 'form'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+
+    // Registro (⬅️ mover aquí)
+    Route::get('/registro',  [RegistroUsuarioController::class, 'create'])->name('registro.create');
+    Route::post('/registro', [RegistroUsuarioController::class, 'store'])->name('registro.store');
+});
+
+// Autenticados
 Route::middleware('auth')->group(function () {
     // Landing autenticado
     Route::get('/', fn () => redirect()->route('casos.index'));
@@ -12,33 +25,25 @@ Route::middleware('auth')->group(function () {
     // 1) Índice
     Route::get('/casos', [CasoController::class, 'index'])->name('casos.index');
 
-    // 2) Crear (antes de comodines)
+    // 2) Crear
     Route::get('/casos/crear', [CasoController::class, 'create'])->name('casos.create');
     Route::post('/casos',      [CasoController::class, 'store'])->name('casos.store');
 
-    // 3) Alimentar/Detalle (antes de show)
+    // 3) Alimentar/Detalle
     Route::get('/casos/{caso}/alimentar', [DetalleCasoController::class, 'edit'])->name('detalle.edit');
     Route::post('/casos/{caso}/detalle',  [DetalleCasoController::class, 'store'])->name('detalle.store');
 
-    // 4) PDF (antes de show y con restricción numérica)
+    // 4) PDF
     Route::get('/casos/{caso}/pdf', [CasoController::class, 'exportarPDF'])
-        ->whereNumber('caso')
-        ->name('casos.pdf');
+        ->whereNumber('caso')->name('casos.pdf');
 
-    // 5) Mostrar caso (comodín final)
+    // 5) Mostrar caso
     Route::get('/casos/{caso}', [CasoController::class, 'show'])
-        ->whereNumber('caso')
-        ->name('casos.show');
-});
+        ->whereNumber('caso')->name('casos.show');
 
-// Invitados
-Route::middleware('guest')->group(function () {
-    Route::get('/login',  [AuthController::class, 'form'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+    // Logout
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
-
-// Logout
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
 // /home legado
 Route::get('/home', fn () => redirect()->route('casos.index'));

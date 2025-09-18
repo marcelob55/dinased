@@ -42,6 +42,14 @@
 
   <button class="btn btn--primary w-full" type="submit">Ingresar</button>
 </form>
+
+<div class="mt-3 text-center">
+  ¿No tienes cuenta? <a href="{{ route('registro.create') }}">Regístrate</a>
+</div>
+@if (session('ok'))
+  <div class="alert alert-success mt-2">{{ session('ok') }}</div>
+@endif
+
 	
 	
   </div>
