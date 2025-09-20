@@ -133,32 +133,28 @@
     $repOtroVal    = $repKnown ? '' : ($reporta ?? '');
   @endphp
 
-  {{-- 1. Verificación --}}
-  <div class="section">
-    <h3>1. Verificación del evento</h3>
-    <div class="form-grid">
-      <div class="field col-8">
-        <label>Verificación</label>
-        <select name="verificacion" class="ctrl" data-other="#verif_otro">
-          <option value="">— Seleccione —</option>
-          @foreach($VERIF_OPTS as $o)
-            <option value="{{ $o }}" {{ $verifSelectValue===$o?'selected':'' }}>{{ $o }}</option>
-          @endforeach
-          <option value="OTRO" {{ $verifSelectValue==='OTRO'?'selected':'' }}>OTRO</option>
-        </select>
-        <input id="verif_otro" type="text" class="ctrl" name="verificacion_otro"
-               placeholder="Especifique otro…" value="{{ $verifOtroValue }}"
-               style="margin-top:6px; {{ $verifSelectValue==='OTRO'?'':'display:none' }}">
-      </div>
+{{-- 1. Verificación --}}
+<div class="section">
+  <h3>1. Verificación del evento</h3>
+  <div class="form-grid">
+    <div class="field col-8">
+      <label>Verificación</label>
+      <input type="text"
+             name="verificacion"
+             class="ctrl upper-input"
+             value="{{ old('verificacion', $detalle->verificacion ?? '') }}"
+             placeholder="VERIFICACIÓN DE UNA PERSONA FALLECIDA POR ARMA DE FUEGO...">
+    </div>
 
-      <div class="field col-4">
-        <label>Código ECU 911</label>
-        <input type="text" name="codigo_ecu"
-               value="{{ old('codigo_ecu', $detalle->codigo_ecu ?? '') }}"
-               placeholder="p.ej. 52794">
-      </div>
+    <div class="field col-4">
+      <label>Código ECU 911</label>
+      <input type="text" name="codigo_ecu"
+             value="{{ old('codigo_ecu', $detalle->codigo_ecu ?? '') }}"
+             placeholder="p.ej. 52794">
     </div>
   </div>
+</div>
+
 
   {{-- 2. Ubicación + mapa --}}
   <div class="section">
