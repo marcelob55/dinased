@@ -14,10 +14,6 @@
        Descargar PDF
     </a>
 	
-	<a class="btn btn-sm btn-primary" target="_blank"
-		href="{{ route('casos.pdf', $caso) }}">
-		PDF (narrativa)
-	</a>
 	
 	<a href="{{ route('segjudicial.create', $caso->id) }}"
 		class="btn btn-outline-secondary">
@@ -41,9 +37,9 @@
 
 <h1>Caso {{ $caso->numero_caso }}</h1>
 
-<p><b>Label:</b> {{ $caso->label }}</p>
+<p><b>Nomnbre del Caso:</b> {{ $caso->label }}</p>
 <p><b>Fecha:</b> {{ $caso->fecha }}</p>
-<p><b>Generador (cédula):</b> {{ $caso->cedula }}</p>
+<p><b>Generador del caso(cédula):</b> {{ $caso->cedula }}</p>
 
 @if($caso->detalle)
   <h3 style="margin-top:18px">Detalle del caso</h3>
@@ -63,6 +59,7 @@
 
     <p><b>Área:</b> {{ $caso->detalle->area }}</p>
     <p><b>Fecha/Hora del hecho:</b> {{ $caso->detalle->fecha_hecho }} {{ $caso->detalle->hora_hecho }}</p>
+	<p><b>Fecha/Hora del Levantamiento:</b> {{ $caso->detalle->fecha_levantamiento}} {{ $caso->detalle->hora_levantamiento }}</p>
 
     <p style="grid-column:1/-1"><b>Lugar del hecho:</b> {{ $caso->detalle->lugar_hecho }}</p>
     <p style="grid-column:1/-1"><b>Coordenadas:</b> {{ $caso->detalle->coordenadas }}</p>

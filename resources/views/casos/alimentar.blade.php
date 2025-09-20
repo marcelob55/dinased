@@ -133,28 +133,32 @@
     $repOtroVal    = $repKnown ? '' : ($reporta ?? '');
   @endphp
 
-{{-- 1. Verificación --}}
-<div class="section">
-  <h3>1. Verificación del evento</h3>
-  <div class="form-grid">
-    <div class="field col-8">
-      <label>Verificación</label>
-      <input type="text"
-             name="verificacion"
-             class="ctrl upper-input"
-             value="{{ old('verificacion', $detalle->verificacion ?? '') }}"
-             placeholder="VERIFICACIÓN DE UNA PERSONA FALLECIDA POR ARMA DE FUEGO...">
-    </div>
+  {{-- 1. Verificación --}}
+  <div class="section">
+    <h3>1. Verificación del evento</h3>
+    <div class="form-grid">
+      <div class="field col-8">
+        <label>Verificación</label>
+        <select name="verificacion" class="ctrl" data-other="#verif_otro">
+          <option value="">— Seleccione —</option>
+          @foreach($VERIF_OPTS as $o)
+            <option value="{{ $o }}" {{ $verifSelectValue===$o?'selected':'' }}>{{ $o }}</option>
+          @endforeach
+          <option value="OTRO" {{ $verifSelectValue==='OTRO'?'selected':'' }}>OTRO</option>
+        </select>
+        <input id="verif_otro" type="text" class="ctrl" name="verificacion_otro"
+               placeholder="Especifique otro…" value="{{ $verifOtroValue }}"
+               style="margin-top:6px; {{ $verifSelectValue==='OTRO'?'':'display:none' }}">
+      </div>
 
-    <div class="field col-4">
-      <label>Código ECU 911</label>
-      <input type="text" name="codigo_ecu"
-             value="{{ old('codigo_ecu', $detalle->codigo_ecu ?? '') }}"
-             placeholder="p.ej. 52794">
+      <div class="field col-4">
+        <label>Código ECU 911</label>
+        <input type="text" name="codigo_ecu"
+               value="{{ old('codigo_ecu', $detalle->codigo_ecu ?? '') }}"
+               placeholder="p.ej. 52794">
+      </div>
     </div>
   </div>
-</div>
-
 
   {{-- 2. Ubicación + mapa --}}
   <div class="section">
@@ -222,36 +226,6 @@
                value="{{ old('lugar_hecho', $detalle->lugar_hecho ?? '') }}"
                placeholder="p.ej. Av. Abraham Calazacón, Zona Rosa">
       </div>
-	  
-	  
-	  
-	  {{-- ===== FECHA / HORA DE LEVANTAMIENTO ===== --}}
-@php
-  // mismo formateador que usaste para hora_del_hecho
-  $fmtHora = $fmtHora ?? function($v){
-    if(!$v) return '';
-    if($v instanceof \Carbon\CarbonInterface) return $v->format('H:i');
-    $s = (string)$v;
-    if(preg_match('/^\d{2}:\d{2}/',$s,$m)) return $m[0];
-    return '';
-  };
-@endphp
-
-<div class="field col-4">
-  <label>Fecha de levantamiento</label>
-  <input type="date" name="fecha_levantamiento"
-         value="{{ old('fecha_levantamiento', optional($detalle->fecha_levantamiento ?? null)->format('Y-m-d')) }}">
-</div>
-
-<div class="field col-4">
-  <label>Hora levantamiento</label>
-  <input type="time" name="hora_levantamiento"
-         value="{{ old('hora_levantamiento', $fmtHora($detalle->hora_levantamiento ?? null)) }}">
-</div>
-
-	  
-	  
-	  
 
       <div class="field col-12">
         <label>Seleccione en el mapa:</label>
@@ -429,39 +403,93 @@
               <div><label>Nacionalidad</label><input class="fld" name="fallecidos[{{ $i }}][nacionalidad]" value="{{ $v['nacionalidad'] ?? '' }}"></div>
               <div><label>Profesión/Ocupación</label><input class="fld" name="fallecidos[{{ $i }}][ocupacion]" value="{{ $v['ocupacion'] ?? '' }}"></div>
               <div><label>Movilización</label><input class="fld" name="fallecidos[{{ $i }}][movilizacion]" value="{{ $v['movilizacion'] ?? '' }}"></div>
-              <div><label>Antecedentes</label>
-                @php $ant = $v['antecedentes'] ?? ''; @endphp
-                <select class="fld" name="fallecidos[{{ $i }}][antecedentes]">
-                  <option value="">–</option>
-                  <option value="Sí" {{ $ant=='Sí'?'selected':'' }}>Sí</option>
-                  <option value="No" {{ $ant=='No'?'selected':'' }}>No</option>
-                </select>
-              </div>
-              <div><label>SATJE / Judicatura</label>
-                @php $sat = $v['sajte'] ?? ''; @endphp
-                <select class="fld" name="fallecidos[{{ $i }}][sajte]">
-                  <option value="">–</option>
-                  <option value="Sí" {{ $sat=='Sí'?'selected':'' }}>Sí</option>
-                  <option value="No" {{ $sat=='No'?'selected':'' }}>No</option>
-                </select>
-              </div>
-              <div><label>Noticia del delito (Fiscalía)</label>
-                @php $nf = $v['noticia_fiscalia'] ?? ''; @endphp
-                <select class="fld" name="fallecidos[{{ $i }}][noticia_fiscalia]">
-                  <option value="">–</option>
-                  <option value="Sí" {{ $nf=='Sí'?'selected':'' }}>Sí</option>
-                  <option value="No" {{ $nf=='No'?'selected':'' }}>No</option>
-                </select>
-              </div>
-              <div><label>GAO / Cargo-Función</label>
-                @php $gao = $v['gao'] ?? ''; @endphp
-                <select class="fld" name="fallecidos[{{ $i }}][gao]">
-                  <option value="">–</option>
-                  <option value="Sí" {{ $gao=='Sí'?'selected':'' }}>Sí</option>
-                  <option value="No" {{ $gao=='No'?'selected':'' }}>No</option>
-                </select>
-              </div>
-            </div>
+              
+			  
+		<div>
+		  <label>Antecedentes</label>
+		  @php $ant = $v['antecedentes'] ?? ''; @endphp
+		  <select class="fld has-detail"
+				  data-target="#f-ante-{{ $i }}"
+				  name="fallecidos[{{ $i }}][antecedentes]">
+			<option value="">–</option>
+			<option value="Sí" {{ $ant=='Sí'?'selected':'' }}>Sí</option>
+			<option value="No" {{ $ant=='No'?'selected':'' }}>No</option>
+		  </select>
+
+		  <input id="f-ante-{{ $i }}"
+				 class="fld"
+				 name="fallecidos[{{ $i }}][antecedentes_det]"
+				 placeholder="Detalle (p. ej. 2015 ASESINATO)"
+				 value="{{ $v['antecedentes_det'] ?? '' }}"
+				 style="{{ ($ant==='Sí') ? '' : 'display:none' }}">
+		</div>
+
+			  
+			  
+			  
+			  
+			  {{-- SATJE / Judicatura --}}
+<div>
+  <label>SATJE / Judicatura</label>
+  @php $sat = $v['sajte'] ?? ''; @endphp
+  <select class="fld has-detail"
+          data-target="#f-satje-{{ $i }}"
+          name="fallecidos[{{ $i }}][sajte]">
+    <option value="">–</option>
+    <option value="Sí" {{ $sat=='Sí'?'selected':'' }}>Sí</option>
+    <option value="No" {{ $sat=='No'?'selected':'' }}>No</option>
+  </select>
+  <input id="f-satje-{{ $i }}"
+         class="fld"
+         name="fallecidos[{{ $i }}][sajte_det]"
+         placeholder="Detalle (p. ej. 2015 PROCESO…)"
+         value="{{ $v['sajte_det'] ?? '' }}"
+         style="{{ ($sat==='Sí') ? '' : 'display:none' }}">
+</div>
+
+{{-- Noticia del delito (Fiscalía) --}}
+<div>
+  <label>Noticia del delito (Fiscalía)</label>
+  @php $nf = $v['noticia_fiscalia'] ?? ''; @endphp
+  <select class="fld has-detail"
+          data-target="#f-nf-{{ $i }}"
+          name="fallecidos[{{ $i }}][noticia_fiscalia]">
+    <option value="">–</option>
+    <option value="Sí" {{ $nf=='Sí'?'selected':'' }}>Sí</option>
+    <option value="No" {{ $nf=='No'?'selected':'' }}>No</option>
+  </select>
+  <input id="f-nf-{{ $i }}"
+         class="fld"
+         name="fallecidos[{{ $i }}][noticia_fiscalia_det]"
+         placeholder="Detalle (p. ej. 2015 ASESINATO)"
+         value="{{ $v['noticia_fiscalia_det'] ?? '' }}"
+         style="{{ ($nf==='Sí') ? '' : 'display:none' }}">
+</div>
+
+{{-- GAO / Cargo-Función --}}
+<div>
+  <label>GAO / Cargo-Función</label>
+  @php $gao = $v['gao'] ?? ''; @endphp
+  <select class="fld has-detail"
+          data-target="#f-gao-{{ $i }}"
+          name="fallecidos[{{ $i }}][gao]">
+    <option value="">–</option>
+    <option value="Sí" {{ $gao=='Sí'?'selected':'' }}>Sí</option>
+    <option value="No" {{ $gao=='No'?'selected':'' }}>No</option>
+  </select>
+  <input id="f-gao-{{ $i }}"
+         class="fld"
+         name="fallecidos[{{ $i }}][gao_det]"
+         placeholder="Detalle (p. ej. CHONERO / SICARIO)"
+         value="{{ $v['gao_det'] ?? '' }}"
+         style="{{ ($gao==='Sí') ? '' : 'display:none' }}">
+</div>
+
+			
+			
+			
+			
+			</div>
           </td>
         </tr>
       @empty
@@ -515,31 +543,95 @@
               <div><label>Nacionalidad</label><input class="fld" name="heridos[{{ $i }}][nacionalidad]" value="{{ $v['nacionalidad'] ?? '' }}"></div>
               <div><label>Profesión/Ocupación</label><input class="fld" name="heridos[{{ $i }}][ocupacion]" value="{{ $v['ocupacion'] ?? '' }}"></div>
               <div><label>Movilización</label><input class="fld" name="heridos[{{ $i }}][movilizacion]" value="{{ $v['movilizacion'] ?? '' }}"></div>
-              <div><label>Antecedentes</label>
-                @php $ant = $v['antecedentes'] ?? ''; @endphp
-                <select class="fld" name="heridos[{{ $i }}][antecedentes]">
-                  <option value="">–</option><option>Sí</option><option>No</option>
-                </select>
-              </div>
-              <div><label>SATJE / Judicatura</label>
-                @php $sat = $v['sajte'] ?? ''; @endphp
-                <select class="fld" name="heridos[{{ $i }}][sajte]">
-                  <option value="">–</option><option>Sí</option><option>No</option>
-                </select>
-              </div>
-              <div><label>Noticia del delito (Fiscalía)</label>
-                @php $nf = $v['noticia_fiscalia'] ?? ''; @endphp
-                <select class="fld" name="heridos[{{ $i }}][noticia_fiscalia]">
-                  <option value="">–</option><option>Sí</option><option>No</option>
-                </select>
-              </div>
-              <div><label>GAO / Cargo-Función</label>
-                @php $gao = $v['gao'] ?? ''; @endphp
-                <select class="fld" name="heridos[{{ $i }}][gao]">
-                  <option value="">–</option><option>Sí</option><option>No</option>
-                </select>
-              </div>
-            </div>
+             
+
+
+<div>
+  <label>Antecedentes</label>
+  @php $ant = $v['antecedentes'] ?? ''; @endphp
+  <select class="fld has-detail"
+          data-target="#h-ante-{{ $i }}"
+          name="heridos[{{ $i }}][antecedentes]">
+    <option value="">–</option>
+    <option value="Sí" {{ $ant=='Sí'?'selected':'' }}>Sí</option>
+    <option value="No" {{ $ant=='No'?'selected':'' }}>No</option>
+  </select>
+
+  <input id="h-ante-{{ $i }}"
+         class="fld"
+         name="heridos[{{ $i }}][antecedentes_det]"
+         placeholder="Detalle (p. ej. 2015 ASESINATO)"
+         value="{{ $v['antecedentes_det'] ?? '' }}"
+         style="{{ ($ant==='Sí') ? '' : 'display:none' }}">
+</div>
+
+
+
+
+
+{{-- SATJE / Judicatura --}}
+<div>
+  <label>SATJE / Judicatura</label>
+  @php $sat = $v['sajte'] ?? ''; @endphp
+  <select class="fld has-detail"
+          data-target="#h-satje-{{ $i }}"
+          name="heridos[{{ $i }}][sajte]">
+    <option value="">–</option>
+    <option value="Sí" {{ $sat=='Sí'?'selected':'' }}>Sí</option>
+    <option value="No" {{ $sat=='No'?'selected':'' }}>No</option>
+  </select>
+  <input id="h-satje-{{ $i }}"
+         class="fld"
+         name="heridos[{{ $i }}][sajte_det]"
+         placeholder="Detalle (p. ej. 2015 PROCESO…)"
+         value="{{ $v['sajte_det'] ?? '' }}"
+         style="{{ ($sat==='Sí') ? '' : 'display:none' }}">
+</div>
+
+{{-- Noticia del delito (Fiscalía) --}}
+<div>
+  <label>Noticia del delito (Fiscalía)</label>
+  @php $nf = $v['noticia_fiscalia'] ?? ''; @endphp
+  <select class="fld has-detail"
+          data-target="#h-nf-{{ $i }}"
+          name="heridos[{{ $i }}][noticia_fiscalia]">
+    <option value="">–</option>
+    <option value="Sí" {{ $nf=='Sí'?'selected':'' }}>Sí</option>
+    <option value="No" {{ $nf=='No'?'selected':'' }}>No</option>
+  </select>
+  <input id="h-nf-{{ $i }}"
+         class="fld"
+         name="heridos[{{ $i }}][noticia_fiscalia_det]"
+         placeholder="Detalle (p. ej. 2015 ASESINATO)"
+         value="{{ $v['noticia_fiscalia_det'] ?? '' }}"
+         style="{{ ($nf==='Sí') ? '' : 'display:none' }}">
+</div>
+
+{{-- GAO / Cargo-Función --}}
+<div>
+  <label>GAO / Cargo-Función</label>
+  @php $gao = $v['gao'] ?? ''; @endphp
+  <select class="fld has-detail"
+          data-target="#h-gao-{{ $i }}"
+          name="heridos[{{ $i }}][gao]">
+    <option value="">–</option>
+    <option value="Sí" {{ $gao=='Sí'?'selected':'' }}>Sí</option>
+    <option value="No" {{ $gao=='No'?'selected':'' }}>No</option>
+  </select>
+  <input id="h-gao-{{ $i }}"
+         class="fld"
+         name="heridos[{{ $i }}][gao_det]"
+         placeholder="Detalle (p. ej. CHONERO / SICARIO)"
+         value="{{ $v['gao_det'] ?? '' }}"
+         style="{{ ($gao==='Sí') ? '' : 'display:none' }}">
+</div>
+
+            
+			
+			
+			
+			
+			</div>
           </td>
         </tr>
       @empty
@@ -579,10 +671,22 @@
       </div>
     </div>
   </div>
+  
+{{-- 8. Indicios --}}
+<div class="section">
+  <h3>8. Indicios</h3>
+  <div class="form-grid">
+    <div class="field col-12">
+      <textarea name="indicios_detalle" class="textarea-l"
+        placeholder="- 42 VAINAS 9MM; - 01 BALA DEFORMADA">{{ old('indicios_detalle', $detalle->indicios_detalle ?? '') }}</textarea>
+    </div>
+  </div>
+</div>
 
-  {{-- 8. Reporta --}}
+
+  {{-- 9. Reporta --}}
   <div class="section">
-    <h3>8. Reporta</h3>
+    <h3>9. Reporta</h3>
     <div class="form-grid">
       <div class="field col-12">
         <select name="reporta" class="ctrl" data-other="#reporta_otro">
@@ -631,43 +735,12 @@
     const $dist  = document.getElementById('input-distrito');
     const $circ  = document.getElementById('input-circuito');
     const $subc  = document.getElementById('input-subcircuito');
-	
-	const goBtn = document.getElementById('btn-go-coord');
-	const geoBtn = document.getElementById('btn-geolocate');
-
 
     function setCoord(latlng){
       $coord.value = `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
     }
 	
-	
-	// --- parsea "lat, lng" o "lat lng" a números
-function parseCoordString(str){
-  if(!str) return null;
-  const parts = str.trim().replace(/[;,]/g,' ').replace(/\s+/g,' ').split(' ');
-  if(parts.length < 2) return null;
-  const lat = parseFloat(parts[0]);
-  const lng = parseFloat(parts[1]);
-  if (Number.isFinite(lat) && Number.isFinite(lng) &&
-      Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
-    return { lat, lng };
-  }
-  return null;
-}
 
-// --- mueve marcador, centra y autocompleta
-function moveMarkerTo(lat, lng, zoom = 15){
-  const ll = { lat, lng };
-  marker.setLatLng(ll);
-  setCoord(ll);
-  map.setView(ll, zoom, { animate: true });
-  autocompleteByNearest(ll);
-}
-
-	
-	
-	
-	
     function normalizaZona(zStr){
       if(!zStr) return "";
       const m = (zStr+"").match(/\d+/);
@@ -769,38 +842,6 @@ function moveMarkerTo(lat, lng, zoom = 15){
       setCoord(ll);
       autocompleteByNearest(ll);
     });
-
-// escribir coordenadas y ENTER/cambio -> mover marcador
-$coord?.addEventListener('change', () => {
-  const p = parseCoordString($coord.value);
-  if (p) moveMarkerTo(p.lat, p.lng);
-});
-
-// botón "Ir a coord."
-goBtn?.addEventListener('click', () => {
-  const p = parseCoordString($coord.value);
-  if (p) {
-    moveMarkerTo(p.lat, p.lng);
-  } else {
-    alert('Coordenadas no válidas. Ej: -0.239389, -79.165556');
-  }
-});
-
-// botón "Ubicación actual"
-geoBtn?.addEventListener('click', () => {
-  if (!navigator.geolocation) {
-    alert('Tu navegador no soporta geolocalización.');
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      moveMarkerTo(pos.coords.latitude, pos.coords.longitude);
-    },
-    (err) => alert('No se pudo obtener la ubicación: ' + err.message),
-    { enableHighAccuracy:true, timeout:10000, maximumAge:30000 }
-  );
-});
-
 
     autocompleteByNearest(marker.getLatLng());
   })();
@@ -909,6 +950,31 @@ geoBtn?.addEventListener('click', () => {
     window._SEED_FALLECIDOS = @json($fallecidos ?? []);
     window._SEED_HERIDOS    = @json($heridos ?? []);
   </script>
+  
+  <script>
+  // Toggle de inputs "detalle" cuando un <select.has-detail> cambie
+  (function(){
+    function toggleDetail(sel){
+      const target = document.querySelector(sel.dataset.target);
+      if(!target) return;
+      const v = (sel.value || '').toLowerCase();
+      const isYes = v === 'sí' || v === 'si' || v === 'sí' || v === 'si '; // contempla acento
+      target.style.display = isYes ? '' : 'none';
+      if(!isYes) target.value = '';
+    }
+    // inicial y on-change
+    document.querySelectorAll('select.has-detail').forEach(toggleDetail);
+    document.addEventListener('change', e=>{
+      const sel = e.target.closest('select.has-detail');
+      if(sel) toggleDetail(sel);
+    });
+  })();
+</script>
+
+  
+  
+  
+  
 @endpush
 
 @endsection

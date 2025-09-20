@@ -45,11 +45,14 @@ class DetalleCasoController extends Controller
             'circunstancias' => ['nullable','string'],
             'fecha_hecho'    => ['nullable','date'],
             'hora_hecho'     => ['nullable'],
-
+			'fecha_levantamiento' => ['nullable','date'],
+			'hora_levantamiento'  => ['nullable'],
             'entrevistas'    => ['nullable','array'],
             'entrevistas.*'  => ['nullable','string'],
             'actividades'    => ['nullable','array'],
             'actividades.*'  => ['nullable','string'],
+			'indicios_detalle' => ['nullable','string'],
+
 
             // arreglos de víctimas
             'fallecidos'     => ['nullable','array'],
@@ -80,7 +83,7 @@ class DetalleCasoController extends Controller
                 'verificacion','codigo_ecu','zona','subzona','distrito','circuito','subcircuito',
                 'espacio','area','lugar_hecho','coordenadas','criminalistica','tipo_arma','indicios',
                 'tipo_delito','motivacion','estado_caso','justificacion','circunstancias',
-                'fecha_hecho','hora_hecho','reporta'
+                'fecha_hecho','hora_hecho','fecha_levantamiento','hora_levantamiento','reporta'
             ]);
             $detalleData['entrevistas'] = $entrevistas;
             $detalleData['actividades'] = $actividades;
