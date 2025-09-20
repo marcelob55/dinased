@@ -3,48 +3,82 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateSeguimientoRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Normaliza algunos campos antes de validar (p.ej. checkbox).
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'escena_misma' => filter_var($this->input('escena_misma'), FILTER_VALIDATE_BOOLEAN),
+        ]);
+    }
 
     public function rules(): array
     {
+        // Catálogos
+        $fiscales       = (array) config('segjudicial.fiscales_delegados', []);
+        $tiposPenales   = (array) config('segjudicial.tipos_penales', []);
+        $medidas        = (array) config('segjudicial.medidas_cautelares', []);
+        $detMedidas     = (array) config('segjudicial.detalles_medidas', []);
+        $vinculacion    = (array) config('segjudicial.vinculacion', []);           // ej: ['SI','NO']
+        $situaciones    = (array) config('segjudicial.situaciones_juridicas', []);
+        $requerimientos = (array) config('segjudicial.requerimientos', []);
+        $fiscNombres    = (array) config('segjudicial.fiscalias_nombres', []);
+        $fiscNumeros    = (array) config('segjudicial.fiscalias_numeros', []);
+        $escenas        = (array) config('segjudicial.escenas', []);
+
         return [
-            // Nº de causa exacto de 15 dígitos
-            'no_causa_no_fiscalia' => ['nullable','regex:/^\d{15}$/'],
+            // Nº de causa exacto
+            'no_causa_no_fiscalia' => ['required','digits:15'],
 
-            // Selects "puros" (valores deben estar en los catálogos)
-            'nombres_del_fiscal_delegado' => ['nullable','in:'.implode(',', config('segjudicial.fiscales_delegados'))],
-            'tipo_penal_en_audiencia_de_formulacion_de_cargos' => ['nullable','in:'.implode(',', config('segjudicial.tipos_penales'))],
-
-            'tipo_de_medidas'   => ['nullable','in:'.implode(',', config('segjudicial.medidas_cautelares'))],
-            'detalle_de_medidas'=> ['nullable','in:'.implode(',', config('segjudicial.detalles_medidas'))],
-            'existio_vinculacion_dentro_de_la_instruccion_fiscal' => ['nullable','in:'.implode(',', config('segjudicial.vinculacion'))],
-
-            'situacion_juridica_actual' => ['nullable','in:'.implode(',', config('segjudicial.situaciones_juridicas'))],
-
-            // Multi-selects; los transformamos a cadena en el controlador
-            'requerimientos_realizados' => ['nullable','array'],
-            'requerimientos_realizados.*' => ['in:'.implode(',', config('segjudicial.requerimientos'))],
-            'requerimientos_pendientes' => ['nullable','array'],
-            'requerimientos_pendientes.*' => ['in:'.implode(',', config('segjudicial.requerimientos'))],
+            // Selects simples
+            'nombres_del_fiscal_delegado' => ['nullable', Rule::in($fiscales)],
+            'tipo_penal_en_audiencia_de_formulacion_de_cargos' => ['nullable', Rule::in($tiposPenales)],
+            'tipo_de_medidas'       => ['nullable', Rule::in($medidas)],
+            'detalle_de_medidas'    => ['nullable', Rule::in($detMedidas)],
+            'existio_vinculacion_dentro_de_la_instruccion_fiscal' => ['required', Rule::in($vinculacion)],
+            'situacion_juridica_actual' => ['nullable', Rule::in($situaciones)],
 
             // Fiscalía
-            'fiscalia_nombre' => ['nullable','in:'.implode(',', config('segjudicial.fiscalias_nombres'))],
-            'fiscalia_numero' => ['nullable','in:'.implode(',', config('segjudicial.fiscalias_numeros'))],
+            'fiscalia_nombre' => ['nullable', Rule::in($fiscNombres)],
+            'fiscalia_numero' => ['nullable', Rule::in($fiscNumeros)],
 
             // Escenas
-            'escena_levantamiento' => ['nullable','in:'.implode(',', config('segjudicial.escenas'))],
-            'escena_suceso'        => ['nullable','in:'.implode(',', config('segjudicial.escenas'))],
+            'escena_levantamiento' => ['nullable', Rule::in($escenas)],
+            'escena_suceso'        => ['nullable', Rule::in($escenas)],
             'escena_misma'         => ['sometimes','boolean'],
 
-            // Vinculados (multi-select) → lo juntamos a string antes de guardar
-            'vinculados' => ['nullable','array'],
-            'vinculados.*' => ['string','max:255'],
+            // Multi-selects
+            'requerimientos_realizados'   => ['nullable','array'],
+            'requerimientos_realizados.*' => [Rule::in($requerimientos)],
+            'requerimientos_pendientes'   => ['nullable','array'],
+            'requerimientos_pendientes.*' => [Rule::in($requerimientos)],
 
-            // Observación sigue siendo texto libre
+            // Vinculados (multi-select de nombres libres)
+            'vinculados'   => ['nullable','array'],
+            'vinculados.*' => ['nullable','string','max:255'],
+
+            // Texto libre
             'observacion' => ['nullable','string'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'no_causa_no_fiscalia.required' => 'El No. de causa es obligatorio.',
+            'no_causa_no_fiscalia.digits'   => 'El No. de causa debe tener 15 dígitos.',
+            'existio_vinculacion_dentro_de_la_instruccion_fiscal.required' => 'Indica si hubo vinculación.',
+            '*.in' => 'El valor seleccionado no es válido.',
         ];
     }
 }

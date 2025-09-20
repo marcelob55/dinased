@@ -6,25 +6,73 @@ use App\Http\Requests\UpdateSeguimientoRequest;
 use App\Models\Caso;
 use App\Models\Seguimiento;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SeguimientoJudicialController extends Controller
 {
-    // GET /casos/{caso}/seguimiento-judicial
+    /**
+     * GET /casos/{caso}/seguimiento-judicial
+     */
     public function create(Request $request, Caso $caso)
     {
-        // Si ya existe, lo editamos; si no, creamos nuevo
+        // Si ya existe seguimiento, lo editamos; si no, precreamos con caso_id
         $seguimiento = $caso->seguimiento ?: new Seguimiento(['caso_id' => $caso->id]);
 
-        // Contexto útil desde el caso (ECU, verificación, etc. si los tienes)
+        /* ---------------------------------------------------------
+         * 1) Encabezado: detalle del caso + contexto
+         * ---------------------------------------------------------*/
+        $detalle = DB::table('detalle_caso')->where('caso_id', $caso->id)->first();
+
+        // Coords (nombres alternativos)
+        $lat = $detalle->lat ?? $detalle->latitud ?? null;
+        $lng = $detalle->lng ?? $detalle->longitud ?? $detalle->lon ?? null;
+
         $contexto = [
-            'ecu'          => $caso->codigo_ecu ?? null,
-            'numero_caso'  => $caso->numero_caso ?? null,
-            'fecha_hecho'  => $caso->fecha_hecho ?? null,
-            'tipo_delito'  => $caso->tipo_delito ?? null,
-            'motivacion'   => $caso->motivacion ?? null,
+            'verificacion'   => $detalle->verificacion ?? null,
+            'ecu'            => $detalle->codigo_ecu ?? $detalle->codigo_ecu911 ?? null,
+            'zona'           => $detalle->zona ?? null,
+            'subzona'        => $detalle->subzona ?? null,
+            'distrito'       => $detalle->distrito ?? null,
+            'circuito'       => $detalle->circuito ?? null,
+            'subcircuito'    => $detalle->subcircuito ?? null,
+            'espacio'        => $detalle->espacio ?? null,
+            'area'           => $detalle->area ?? null,
+
+            'fecha_hora'     => $detalle->fecha_hora_del_hecho
+                                ?? $detalle->fecha_hora_hecho
+                                ?? $detalle->fecha_hecho
+                                ?? null,
+
+            'lugar_hecho'    => $detalle->lugar_del_hecho ?? $detalle->lugar_hecho ?? null,
+            'coordenadas'    => ($lat && $lng) ? "{$lat}, {$lng}" : null,
+
+            'criminalistica' => isset($detalle->criminalistica)
+                                ? ($detalle->criminalistica ? 'SI' : 'NO')
+                                : null,
+            'indicios'       => isset($detalle->indicios)
+                                ? ($detalle->indicios ? 'SI' : 'NO')
+                                : null,
+
+            'tipo_arma'      => $detalle->tipo_de_arma ?? $detalle->tipo_arma ?? null,
+            'tipo_delito'    => $detalle->tipo_de_delito ?? $detalle->tipo_delito ?? null,
+            'estado_caso'    => $detalle->estado_del_caso ?? $detalle->estado_caso ?? null,
+            'motivacion'     => $detalle->motivacion ?? null,
+            'justificacion'  => $detalle->justificacion ?? null,
         ];
 
-        // Catálogos de selects (lee de config/segjudicial.php)
+        /* ---------------------------------------------------------
+         * 2) Fallecidos / Heridos para el encabezado
+         *    (flexible: intenta relaciones, si no, consulta BD)
+         * ---------------------------------------------------------*/
+        [$fallecidos, $heridos] = $this->extraerPersonasDelCaso($caso);
+        $contexto['fallecidos'] = $fallecidos;
+        $contexto['heridos']    = $heridos;
+
+        /* ---------------------------------------------------------
+         * 3) Catálogos de selects
+         * ---------------------------------------------------------*/
         $cat = [
             'fiscales'          => config('segjudicial.fiscales_delegados', []),
             'tiposPenales'      => config('segjudicial.tipos_penales', []),
@@ -38,7 +86,9 @@ class SeguimientoJudicialController extends Controller
             'escenas'           => config('segjudicial.escenas', []),
         ];
 
-        // Nº de causa existentes (opcional, por si quieres sugerir)
+        /* ---------------------------------------------------------
+         * 4) Nº de causa existentes (para sugerir)
+         * ---------------------------------------------------------*/
         $causas = Seguimiento::whereNotNull('no_causa_no_fiscalia')
             ->whereRaw("no_causa_no_fiscalia REGEXP '^[0-9]{15}$'")
             ->orderByDesc('id')
@@ -46,54 +96,190 @@ class SeguimientoJudicialController extends Controller
             ->limit(50)
             ->pluck('no_causa_no_fiscalia');
 
-        // Vinculados sugeridos desde víctimas y detenidos
-        $vinculados = collect([])
-            ->merge(method_exists($caso, 'victimas')   ? ($caso->victimas?->pluck('nombre') ?? []) : [])
-            ->merge(method_exists($caso, 'detenidos')  ? ($caso->detenidos?->pluck('nombre') ?? []) : [])
-            ->filter()->unique()->values();
+        /* ---------------------------------------------------------
+         * 5) Vinculados sugeridos: víctimas + detenidos (nombres)
+         * ---------------------------------------------------------*/
+        $vinculados = $this->sugerirNombresVinculados($caso);
 
-        return view('segjudicial.create', compact('caso','seguimiento','contexto','cat','causas','vinculados'));
+        return view('segjudicial.create', compact(
+            'caso', 'seguimiento', 'contexto', 'cat', 'causas', 'vinculados'
+        ));
     }
 
-    // POST /casos/{caso}/seguimiento-judicial
-public function store(UpdateSeguimientoRequest $request, Caso $caso)
-{
-    $data = $request->validated();
+    /**
+     * POST /casos/{caso}/seguimiento-judicial
+     */
+    public function store(UpdateSeguimientoRequest $request, Caso $caso)
+    {
+        $data = $request->validated();
 
-    // Multi-selects → cadena separada por coma
-    foreach (['requerimientos_realizados', 'requerimientos_pendientes'] as $k) {
-        if (array_key_exists($k, $data)) {
-            $data[$k] = is_array($data[$k])
-                ? implode(', ', array_filter($data[$k]))
-                : (string) $data[$k];
+        // Multi-selects → cadena separada por coma
+        foreach (['requerimientos_realizados', 'requerimientos_pendientes'] as $k) {
+            if (array_key_exists($k, $data)) {
+                $data[$k] = is_array($data[$k])
+                    ? implode(', ', array_filter($data[$k]))
+                    : (string) $data[$k];
+            }
         }
-    }
 
-    // Vinculados (array) → columna string
-    if (isset($data['vinculados']) && is_array($data['vinculados'])) {
-        $data['nombre_del_o_los_vinculados'] = implode(', ', array_filter($data['vinculados']));
-        unset($data['vinculados']);
-    }
-
-    // Misma escena → copia valor si procede
-    if (!empty($data['escena_misma'])) {
-        if (empty($data['escena_suceso']) && !empty($data['escena_levantamiento'])) {
-            $data['escena_suceso'] = $data['escena_levantamiento'];
+        // Vinculados (array) → una sola columna string
+        if (isset($data['vinculados']) && is_array($data['vinculados'])) {
+            $data['nombre_del_o_los_vinculados'] = implode(', ', array_filter($data['vinculados']));
+            unset($data['vinculados']);
         }
-        unset($data['escena_misma']);
+
+        // Misma escena → si se marcó y no vino suceso, copia levantamiento
+        if (!empty($data['escena_misma'])) {
+            if (empty($data['escena_suceso']) && !empty($data['escena_levantamiento'])) {
+                $data['escena_suceso'] = $data['escena_levantamiento'];
+            }
+            unset($data['escena_misma']);
+        }
+
+        // Guardar / actualizar
+        $seguimiento = $caso->seguimiento;
+        if ($seguimiento) {
+            $seguimiento->update($data);
+        } else {
+            $seguimiento = $caso->seguimiento()->create($data);
+        }
+
+        return redirect()
+            ->route('segjudicial.create', $caso)
+            ->with('ok', 'Seguimiento judicial guardado.');
     }
 
-    // Guardar / actualizar
-    $seguimiento = $caso->seguimiento;
-    if ($seguimiento) {
-        $seguimiento->update($data);
-    } else {
-        $seguimiento = $caso->seguimiento()->create($data);
+    /* ======================================================================
+     * Helpers privados
+     * ======================================================================*/
+
+    /**
+     * Obtiene listas (Collection) de fallecidos y heridos para el encabezado.
+     * Devuelve [Collection $fallecidos, Collection $heridos]
+     *
+     * Cada item es un objeto con ->nombre y ->cedula.
+     */
+    private function extraerPersonasDelCaso(Caso $caso): array
+    {
+        $fallecidos = collect();
+        $heridos    = collect();
+
+        // 1) Si existen relaciones Eloquent, úsalas
+        if (method_exists($caso, 'victimas')) {
+            try {
+                $victimas = $caso->victimas ?: collect();
+                $fallecidos = $victimas->map(function ($v) {
+                    $nombre = $this->armarNombre($v);
+                    return (object)[
+                        'nombre' => $nombre,
+                        'cedula' => $v->cedula ?? null,
+                    ];
+                })->filter(fn($p) => $p->nombre); // todas como "fallecidos" si no hay flag
+            } catch (\Throwable $e) {
+                // continúa con el plan B
+            }
+        }
+
+        if (method_exists($caso, 'detenidos')) {
+            try {
+                $detenidos = $caso->detenidos ?: collect();
+                $heridos = $detenidos->map(function ($d) {
+                    $nombre = $this->armarNombre($d);
+                    return (object)[
+                        'nombre' => $nombre,
+                        'cedula' => $d->cedula ?? null,
+                    ];
+                })->filter(fn($p) => $p->nombre);
+            } catch (\Throwable $e) {
+                // sigue abajo
+            }
+        }
+
+        // 2) Si faltan datos, intenta leer tablas directamente
+        if ($fallecidos->isEmpty() && Schema::hasTable('victimas')) {
+            try {
+                $rows = DB::table('victimas')->where('caso_id', $caso->id)->get();
+                $fallecidos = $rows->map(function ($r) {
+                    return (object)[
+                        'nombre' => $this->armarNombre($r),
+                        'cedula' => $r->cedula ?? null,
+                    ];
+                })->filter(fn($p) => $p->nombre);
+            } catch (\Throwable $e) {}
+        }
+
+        if ($heridos->isEmpty() && Schema::hasTable('detenidos')) {
+            try {
+                $rows = DB::table('detenidos')->where('caso_id', $caso->id)->get();
+                $heridos = $rows->map(function ($r) {
+                    return (object)[
+                        'nombre' => $this->armarNombre($r),
+                        'cedula' => $r->cedula ?? null,
+                    ];
+                })->filter(fn($p) => $p->nombre);
+            } catch (\Throwable $e) {}
+        }
+
+        return [$fallecidos->values(), $heridos->values()];
     }
 
-    return redirect()
-        ->route('segjudicial.create', $caso)
-        ->with('ok', 'Seguimiento judicial guardado.');
-}
+    /**
+     * Construye un nombre legible a partir de distintos esquemas de columnas.
+     */
+    private function armarNombre($row): ?string
+    {
+        // Combina 'nombres' + 'apellidos'
+        $nombres   = trim(($row->nombres ?? '') . ' ' . ($row->apellidos ?? ''));
+        if ($nombres !== '') return preg_replace('/\s+/', ' ', $nombres);
 
+        // Campo único 'nombre'
+        if (!empty($row->nombre)) return trim($row->nombre);
+
+        // Campo tipo 'apellidos_nombres' o similar
+        foreach (['apellidos_nombres', 'apellidos_y_nombres', 'nombre_completo'] as $c) {
+            if (!empty($row->{$c})) return trim($row->{$c});
+        }
+
+        return null;
+    }
+
+    /**
+     * Sugerencias de nombres para el multi-select "vinculados".
+     */
+    private function sugerirNombresVinculados(Caso $caso): Collection
+    {
+        $nombres = collect();
+
+        // Relaciones si existen
+        if (method_exists($caso, 'victimas')) {
+            try {
+                $nombres = $nombres->merge(
+                    ($caso->victimas ?: collect())->map(fn($v) => $this->armarNombre($v))
+                );
+            } catch (\Throwable $e) {}
+        }
+        if (method_exists($caso, 'detenidos')) {
+            try {
+                $nombres = $nombres->merge(
+                    ($caso->detenidos ?: collect())->map(fn($d) => $this->armarNombre($d))
+                );
+            } catch (\Throwable $e) {}
+        }
+
+        // Plan B: tablas directas
+        if (Schema::hasTable('victimas')) {
+            try {
+                $rows = DB::table('victimas')->where('caso_id', $caso->id)->get();
+                $nombres = $nombres->merge($rows->map(fn($r) => $this->armarNombre($r)));
+            } catch (\Throwable $e) {}
+        }
+        if (Schema::hasTable('detenidos')) {
+            try {
+                $rows = DB::table('detenidos')->where('caso_id', $caso->id)->get();
+                $nombres = $nombres->merge($rows->map(fn($r) => $this->armarNombre($r)));
+            } catch (\Throwable $e) {}
+        }
+
+        return $nombres->filter()->unique()->values();
+    }
 }
