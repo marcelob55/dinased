@@ -86,15 +86,24 @@ class SeguimientoJudicialController extends Controller
             'escenas'           => config('segjudicial.escenas', []),
         ];
 
-        /* ---------------------------------------------------------
-         * 4) Nº de causa existentes (para sugerir)
-         * ---------------------------------------------------------*/
-        $causas = Seguimiento::whereNotNull('no_causa_no_fiscalia')
-            ->whereRaw("no_causa_no_fiscalia REGEXP '^[0-9]{15}$'")
-            ->orderByDesc('id')
-            ->distinct()
-            ->limit(50)
-            ->pluck('no_causa_no_fiscalia');
+
+
+/* ---------------------------------------------------------
+ * 4) Nº de causa existentes (para sugerir)
+ *    (fix MySQL 8: evitar DISTINCT + ORDER BY id)
+ * ---------------------------------------------------------*/
+$causas = DB::table('seguimiento')
+    ->select('no_causa_no_fiscalia', DB::raw('MAX(id) AS last_id'))
+    ->whereNotNull('no_causa_no_fiscalia')
+    ->whereRaw("no_causa_no_fiscalia REGEXP '^[0-9]{15}$'")
+    ->groupBy('no_causa_no_fiscalia')
+    ->orderByDesc('last_id')
+    ->limit(50)
+    ->pluck('no_causa_no_fiscalia');
+
+
+
+
 
         /* ---------------------------------------------------------
          * 5) Vinculados sugeridos: víctimas + detenidos (nombres)
