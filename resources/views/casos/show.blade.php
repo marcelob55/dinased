@@ -14,6 +14,13 @@
        Descargar PDF
     </a>
 	
+	<a href="{{ route('casos.whatsapp', $caso) }}"
+   target="_blank"
+   class="btn btn-outline-success">
+   Copiar formato WhatsApp
+</a>
+
+	
 	
 	<a href="{{ route('segjudicial.create', $caso->id) }}"
 		class="btn btn-outline-secondary">
