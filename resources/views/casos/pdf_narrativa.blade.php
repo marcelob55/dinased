@@ -1,60 +1,185 @@
 @php
     /** @var \App\Models\Caso $caso */
     $d = $caso->detalle;
-    $fmt = fn($v) => $v && trim($v) !== '' ? $v : '—';
 
-    // Fecha/hora del hecho (unimos si existen)
-    $fHecho = optional($d->fecha_hecho)->format('d/m/Y');
-    $hHecho = $d->hora_hecho ?? null;
-    $fechaHoraHecho = trim(($fHecho ?: '').', '.($hHecho ?: ''));
-    if ($fechaHoraHecho === ',') $fechaHoraHecho = '—';
+    // Helper robusto: maneja null/arrays/objetos
+    $fmt = function($v) {
+        if ($v === null) return '—';
+        if (is_array($v)) {
+            $v = array_map(fn($x) => is_scalar($x) ? (string)$x : json_encode($x, JSON_UNESCAPED_UNICODE), $v);
+            $v = array_filter(array_map('trim', $v), fn($s)=>$s!=='');
+            return count($v) ? implode(', ', $v) : '—';
+        }
+        if (is_object($v) && !method_exists($v,'__toString')) return '—';
+        $s = trim((string)$v);
+        return $s !== '' ? $s : '—';
+    };
 
-    // (Opcional) Si tienes fecha/hora de levantamiento, agrega columna en BD y casteo en el modelo DetalleCaso como fecha_levantamiento + hora_levantamiento.
-    $fLev = property_exists($d,'fecha_levantamiento') ? optional($d->fecha_levantamiento)->format('d/m/Y') : null;
-    $hLev = property_exists($d,'hora_levantamiento') ? $d->hora_levantamiento : null;
-    $fechaHoraLev = trim(($fLev ?: '').', '.($hLev ?: ''));
-    if ($fechaHoraLev === ',') $fechaHoraLev = '—';
+    /* ========= TÍTULO sin duplicar "VERIFICACIÓN" ========= */
+    $raw = (string)($d->verificacion ?? '');
+    $txt = trim(preg_replace('/\s+/u', ' ', $raw));
+    $txt = preg_replace('/^(?:[\s\x{A0}]*verificaci(?:ó|o)n[\s\x{A0}]*)+/iu', '', $txt);
+    $titulo = $txt !== '' ? 'VERIFICACIÓN '.$txt : 'VERIFICACIÓN DE UNA PERSONA FALLECIDA POR ARMA DE FUEGO';
 
-    // Agrupar víctimas
+    /* ========= FECHAS / HORAS (DATE + TIME separados) ========= */
+    // Hecho
+    $fechaHecho = $d->fecha_hecho ? \Carbon\Carbon::parse($d->fecha_hecho)->format('d/m/Y') : null;
+    $horaHecho  = $d->hora_hecho ? \Carbon\Carbon::parse($d->hora_hecho)->format('H:i') : null;
+    $fechaHoraHecho = $fechaHecho && $horaHecho ? "$fechaHecho $horaHecho" : ($fechaHecho ?: ($horaHecho ?: '—'));
+
+    // Levantamiento
+    $fechaLev = $d->fecha_levantamiento ? \Carbon\Carbon::parse($d->fecha_levantamiento)->format('d/m/Y') : null;
+    $horaLev  = $d->hora_levantamiento ? \Carbon\Carbon::parse($d->hora_levantamiento)->format('H:i') : null;
+    $fechaHoraLev = $fechaLev && $horaLev ? "$fechaLev $horaLev" : ($fechaLev ?: ($horaLev ?: '—'));
+
+    /* ========= Víctimas ========= */
     $occisos = $caso->victimas->where('tipo','occiso')->sortBy('etiqueta');
     $heridos = $caso->victimas->where('tipo','herido')->sortBy('etiqueta');
 
-    // Fila víctima en formato “OCCISO A: APELLIDOS NOMBRES …”
     $victimaLinea = function($v){
-        // Orden “APELLIDOS NOMBRES” (ajusta si prefieres “Nombres Apellidos”)
-        $nombre = trim(($v->apellidos ? mb_strtoupper($v->apellidos) : '').' '.($v->nombres ? mb_strtoupper($v->nombres) : ''));
-        $cedula = $v->cedula ?: '—';
-        $edad   = $v->edad ? ($v->edad.' años') : '—';
-        $alias  = $v->alias ?: 'Se desconoce';
-        $nac    = $v->nacionalidad ?: '—';
-        $prof   = $v->profesion_ocupacion ?: 'Se desconoce';
-        $mov    = $v->movilizacion ?: 'Se desconoce';
-        $ant    = isset($v->antecedentes) ? ($v->antecedentes ? 'Si' : 'No') : '—';
-        $satje  = isset($v->sajte_judicatura) ? ($v->sajte_judicatura ? 'SI' : 'NO') : '—';
-        $notDel = isset($v->noticia_del_delito_fiscalia) ? ($v->noticia_del_delito_fiscalia ? 'SI' : 'NO') : '—';
-        $perGAO = isset($v->pertenece_gao) ? ($v->pertenece_gao ? 'SI' : 'NO') : '—';
-        $cargo  = $v->gao_cargo_funcion ?: 'Se desconoce';
-
+        $nombre = trim(
+            ($v->apellidos ? mb_strtoupper($v->apellidos) : '')
+            .' '.
+            ($v->nombres ? mb_strtoupper($v->nombres) : '')
+        );
         return [
             'titulo' => mb_strtoupper($v->tipo).' '.($v->etiqueta ?: '—').': '.$nombre,
-            'cedula' => $cedula,
-            'edad'   => $edad,
-            'alias'  => $alias,
-            'nac'    => $nac,
-            'prof'   => $prof,
-            'mov'    => $mov,
-            'ant'    => $ant,
-            'satje'  => $satje,
-            'notDel' => $notDel,
-            'perGAO' => $perGAO,
-            'cargo'  => $cargo,
+            'cedula' => $v->cedula ?: '—',
+            'edad'   => $v->edad ? ($v->edad.' años') : '—',
+            'alias'  => $v->alias ?: 'Se desconoce',
+            'nac'    => $v->nacionalidad ?: '—',
+            'prof'   => $v->profesion_ocupacion ?: 'Se desconoce',
+            'mov'    => $v->movilizacion ?: 'Se desconoce',
+            'ant'    => isset($v->antecedentes) ? ($v->antecedentes ? 'SI' : 'NO') : '—',
+            'satje'  => isset($v->sajte_judicatura) ? ($v->sajte_judicatura ? 'SI' : 'NO') : '—',
+            'notDel' => isset($v->noticia_del_delito_fiscalia) ? ($v->noticia_del_delito_fiscalia ? 'SI' : 'NO') : '—',
+            'perGAO' => isset($v->pertenece_gao) ? ($v->pertenece_gao ? 'SI' : 'NO') : '—',
+            'cargo'  => $v->gao_cargo_funcion ?: 'Se desconoce',
         ];
     };
 
-    // Indicios: si sólo tienes “Sí/No”, imprimimos eso; si agregas lista en detalle.indicios_detalle, la mostramos debajo.
+    /* ====== Indicios (normalización robusta) ====== */
     $indiciosYN = $d->indicios ?: '—';
-    $indiciosTxt = property_exists($d,'indicios_detalle') && $d->indicios_detalle ? $d->indicios_detalle : null;
-@endphp
+    $rawIndicios = $d->indicios_detalle ?? null;
+
+    // Normalizador recursivo -> string (una línea por ítem)
+    $normalize = null;
+    $normalize = function ($v) use (&$normalize) {
+        if ($v === null) return null;
+
+        if (is_string($v)) {
+            $vTrim = trim($v);
+            if ($vTrim === '') return null;
+            $decoded = json_decode($vTrim, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $v = $decoded;
+            } else {
+                return $vTrim;
+            }
+        }
+
+        if (is_scalar($v)) {
+            $s = trim((string)$v);
+            return $s === '' ? null : $s;
+        }
+
+        if (is_array($v)) {
+            $lines = [];
+            foreach ($v as $item) {
+                $line = $normalize($item);
+                if ($line !== null) $lines[] = $line;
+            }
+            return count($lines) ? implode("\n", $lines) : null;
+        }
+
+        if (is_object($v)) {
+            if (method_exists($v, '__toString')) {
+                $s = trim((string)$v);
+                return $s === '' ? null : $s;
+            }
+            $json = json_encode($v, JSON_UNESCAPED_UNICODE);
+            return $json === false ? null : $json;
+        }
+
+        return null;
+    };
+
+    $indiciosTxt = $normalize($rawIndicios);
+
+      /* ====== Utilidad: decodifica JSON o líneas para entrevistas/actividades (robusto) ====== */
+    $toLines = function ($val) {
+        $toScalarString = function ($x) {
+            if (is_scalar($x) || (is_object($x) && method_exists($x, '__toString'))) {
+                $s = trim((string)$x);
+                return $s === '' ? null : $s;
+            }
+            $json = json_encode($x, JSON_UNESCAPED_UNICODE);
+            if ($json === false) return null;
+            $s = trim($json);
+            return $s === '' ? null : $s;
+        };
+
+        $flatten = null;
+        $flatten = function ($arr) use (&$flatten) {
+            $out = [];
+            foreach ($arr as $v) {
+                if (is_array($v)) {
+                    $out = array_merge($out, $flatten($v));
+                } else {
+                    $out[] = $v;
+                }
+            }
+            return $out;
+        };
+
+        // 1) Null
+        if ($val === null) return [];
+
+        // 2) String
+        if (is_string($val)) {
+            $valTrim = trim($val);
+            if ($valTrim === '') return [];
+            $decoded = json_decode($valTrim, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $decoded = $flatten($decoded);
+                $lines = [];
+                foreach ($decoded as $item) {
+                    $s = $toScalarString($item);
+                    if ($s !== null) $lines[] = $s;
+                }
+                return $lines;
+            }
+            // texto plano con saltos de línea
+            $parts = preg_split('/\r\n|\r|\n/u', $valTrim);
+            $out = [];
+            foreach ($parts as $p) {
+                $s = $toScalarString($p);
+                if ($s !== null) $out[] = $s;
+            }
+            return $out;
+        }
+
+        // 3) Array
+        if (is_array($val)) {
+            $val = $flatten($val);
+            $out = [];
+            foreach ($val as $item) {
+                $s = $toScalarString($item);
+                if ($s !== null) $out[] = $s;
+            }
+            return $out;
+        }
+
+        // 4) Escalar/objeto
+        $s = $toScalarString($val);
+        return $s !== null ? [$s] : [];
+    };
+
+    // Recalcular con el helper nuevo
+    $entrevistasArr = $toLines($d->entrevistas ?? null);
+    $actividadesArr = $toLines($d->actividades ?? null);
+	
+	@endphp
 <!doctype html>
 <html lang="es">
 <head>
@@ -65,15 +190,12 @@
   body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size: 12px; color:#111; }
   h1{ font-size: 18px; margin:0 0 10px 0; }
   .b{ font-weight:700; }
-  .mt{ margin-top:10px; }
-  .mb{ margin-bottom:10px; }
   .blk{ margin:8px 0; }
-  .sp{ height:6px; }
 </style>
 </head>
 <body>
 
-<h1>VERIFICACIÓN {{ $fmt($d->verificacion ?? null) }}</h1>
+<h1>{{ $titulo }}</h1>
 
 <div class="blk"><span class="b">CÓDIGO ÚNICO:</span><br>{{ $fmt($d->codigo_ecu ?? null) }}</div>
 
@@ -82,7 +204,7 @@
 <div class="blk"><span class="b">CIRCUITO:</span> {{ $fmt($d->circuito ?? null) }}</div>
 <div class="blk"><span class="b">SUBCIRCUITO:</span> {{ $fmt($d->subcircuito ?? null) }}</div>
 
-<div class="blk"><span class="b">FECHA/HORA DEL HECHO:</span><br>{{ $fechaHoraHecho ?: '—' }} {{ $hHecho ? ' Aproximadamente.' : '' }}</div>
+<div class="blk"><span class="b">FECHA/HORA DEL HECHO:</span><br>{{ $fechaHoraHecho }}{{ $horaHecho ? ' Aproximadamente.' : '' }}</div>
 
 <div class="blk"><span class="b">LUGAR DEL HECHO:</span><br>{{ $fmt($d->lugar_hecho ?? null) }}</div>
 
@@ -95,7 +217,6 @@
 
 <div class="blk">
   <span class="b">ASISTE CRIMINALÍSTICA:</span> {{ $fmt($d->criminalistica ?? null) }}
-  {{-- Si quieres formatear en varias líneas (UCM / nombre / cc / cel) coloca todo en el campo y se imprimirá tal cual --}}
 </div>
 
 <div class="blk">
@@ -110,7 +231,6 @@
 
 <div class="blk">
   <span class="b">ESTADO DE CASO:</span><br>
-  {{-- Si solo tienes un estado general en d->estado_caso, se imprime; si gestionas banderas, reemplaza por tu lógica --}}
   {{ $fmt($d->estado_caso ?? null) }}
 </div>
 
@@ -138,7 +258,7 @@
   @endforeach
 @endif
 
-{{-- (Opcional) Heridos si quisieras listarlos con el mismo formato --}}
+{{-- HERIDOS --}}
 @if($heridos->count())
   @foreach($heridos as $v)
     @php $L = $victimaLinea($v); @endphp
@@ -165,8 +285,8 @@
 
 <div class="blk">
   <span class="b">ENTREVISTAS REALIZADAS</span><br>
-  @if(is_array($d->entrevistas) && count($d->entrevistas))
-    {!! nl2br(e(implode("\n", $d->entrevistas))) !!}
+  @if(count($entrevistasArr))
+    {!! nl2br(e(implode("\n", $entrevistasArr))) !!}
   @else
     —
   @endif
@@ -174,8 +294,8 @@
 
 <div class="blk">
   <span class="b">ACTIVIDADES REALIZADAS:</span><br>
-  @if(is_array($d->actividades) && count($d->actividades))
-    @foreach($d->actividades as $a)
+  @if(count($actividadesArr))
+    @foreach($actividadesArr as $a)
       - {{ $a }}<br>
     @endforeach
   @else

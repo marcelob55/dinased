@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/casos/{caso}/alimentar', [DetalleCasoController::class, 'edit'])->name('detalle.edit');
     Route::post('/casos/{caso}/detalle',  [DetalleCasoController::class, 'store'])->name('detalle.store');
 
+
     // 4) PDF
     Route::get('/casos/{caso}/pdf', [CasoController::class, 'exportarPDF'])
         ->whereNumber('caso')->name('casos.pdf');

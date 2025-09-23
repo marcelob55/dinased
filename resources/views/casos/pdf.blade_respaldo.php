@@ -10,26 +10,24 @@
     $fmtDate = function ($v) {
         if (!$v) return null;
         if ($v instanceof Carbon) return $v->format('d/m/Y');
+        // string 'YYYY-MM-DD'
         try { return Carbon::parse($v)->format('d/m/Y'); } catch (\Throwable $e) { return (string)$v; }
     };
+
     $fmtTime = function ($v) {
         if (!$v) return null;
         if ($v instanceof Carbon) return $v->format('H:i');
+        // string 'HH:MM:SS' o 'HH:MM'
         if (is_string($v) && preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $v)) return substr($v, 0, 5);
         try { return Carbon::parse($v)->format('H:i'); } catch (\Throwable $e) { return (string)$v; }
     };
 
-    // -------- normaliza título (evita "VERIFICACIÓN VERIFICACIÓN ...") --------
-		// Normaliza título
-		$verRaw = (string)($detalle->verificacion ?? '');
-		$verTxt = trim(preg_replace('/\s+/u', ' ', $verRaw));
-		if ($verTxt !== '') {
-			$verTxt = preg_replace('/^(?:\h*VERIFICACI[ÓO]N\h*){2,}/u', 'VERIFICACIÓN ', $verTxt);
-		}
-
+    // normaliza título (evita "VERIFICACIÓN VERIFICACIÓN ...")
+    $verTxt = trim((string)($detalle->verificacion ?? ''));
+    if ($verTxt !== '') {
+        $verTxt = preg_replace('/^(VERIFICACIÓN\s+)+/iu', 'VERIFICACIÓN ', $verTxt); // si repite, lo deja una sola vez
+    }
 @endphp
-
-
 <!doctype html>
 <html lang="es">
 <head>

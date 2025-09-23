@@ -133,32 +133,30 @@
     $repOtroVal    = $repKnown ? '' : ($reporta ?? '');
   @endphp
 
-  {{-- 1. Verificación --}}
-  <div class="section">
-    <h3>1. Verificación del evento</h3>
-    <div class="form-grid">
-      <div class="field col-8">
-        <label>Verificación</label>
-        <select name="verificacion" class="ctrl" data-other="#verif_otro">
-          <option value="">— Seleccione —</option>
-          @foreach($VERIF_OPTS as $o)
-            <option value="{{ $o }}" {{ $verifSelectValue===$o?'selected':'' }}>{{ $o }}</option>
-          @endforeach
-          <option value="OTRO" {{ $verifSelectValue==='OTRO'?'selected':'' }}>OTRO</option>
-        </select>
-        <input id="verif_otro" type="text" class="ctrl" name="verificacion_otro"
-               placeholder="Especifique otro…" value="{{ $verifOtroValue }}"
-               style="margin-top:6px; {{ $verifSelectValue==='OTRO'?'':'display:none' }}">
-      </div>
 
-      <div class="field col-4">
-        <label>Código ECU 911</label>
-        <input type="text" name="codigo_ecu"
-               value="{{ old('codigo_ecu', $detalle->codigo_ecu ?? '') }}"
-               placeholder="p.ej. 52794">
-      </div>
+
+{{-- 1. Verificación --}}
+<div class="section">
+  <h3>1. Verificación del evento</h3>
+  <div class="form-grid">
+    <div class="field col-8">
+      <label>Verificación</label>
+      <input type="text" name="verificacion" class="ctrl"
+             value="{{ old('verificacion', $detalle->verificacion ?? '') }}"
+             placeholder="VERIFICACIÓN DE UNA PERSONA FALLECIDA POR ARMA DE FUEGO">
+    </div>
+
+    <div class="field col-4">
+      <label>Código ECU 911</label>
+      <input type="text" name="codigo_ecu"
+             value="{{ old('codigo_ecu', $detalle->codigo_ecu ?? '') }}"
+             placeholder="p.ej. 52794">
     </div>
   </div>
+</div>
+
+
+
 
   {{-- 2. Ubicación + mapa --}}
   <div class="section">
@@ -218,14 +216,38 @@
 </div>
 
 
-
-
       <div class="field col-6">
         <label>Lugar del hecho</label>
         <input type="text" name="lugar_hecho"
                value="{{ old('lugar_hecho', $detalle->lugar_hecho ?? '') }}"
                placeholder="p.ej. Av. Abraham Calazacón, Zona Rosa">
       </div>
+	  
+	  
+	  
+	  
+	  <div class="field col-6">
+  <label>Fecha de levantamiento</label>
+  <input type="date" name="fecha_levantamiento"
+         value="{{ old('fecha_levantamiento', optional($detalle->fecha_levantamiento ?? null)->format('Y-m-d')) }}">
+</div>
+
+<div class="field col-6">
+  <label>Hora de levantamiento</label>
+  @php
+    $hlRaw = old('hora_levantamiento', $detalle->hora_levantamiento ?? null);
+    $hlVal = null;
+    if($hlRaw!==null && $hlRaw!==''){
+      try { $hlVal = \Carbon\Carbon::parse($hlRaw)->format('H:i:s'); }
+      catch(\Throwable $e){
+        $s=(string)$hlRaw;
+        if(preg_match('/^\d{2}:\d{2}:\d{2}$/',$s)) $hlVal=$s;
+        elseif(preg_match('/^\d{2}:\d{2}$/',$s))   $hlVal=$s.':00';
+      }
+    }
+  @endphp
+  <input type="time" name="hora_levantamiento" step="1" value="{{ $hlVal }}">
+</div>
 
       <div class="field col-12">
         <label>Seleccione en el mapa:</label>
@@ -726,127 +748,184 @@
   })();
   </script>
 
+  
+  
   <script>
-  (function(){
-    // -------- helpers UI --------
-    const $coord = document.getElementById('coord');
-    const $zona  = document.getElementById('input-zona');
-    const $subz  = document.getElementById('input-subzona');
-    const $dist  = document.getElementById('input-distrito');
-    const $circ  = document.getElementById('input-circuito');
-    const $subc  = document.getElementById('input-subcircuito');
+(function(){
+  // -------- helpers UI --------
+  const $coord = document.getElementById('coord');
+  const $zona  = document.getElementById('input-zona');
+  const $subz  = document.getElementById('input-subzona');
+  const $dist  = document.getElementById('input-distrito');
+  const $circ  = document.getElementById('input-circuito');
+  const $subc  = document.getElementById('input-subcircuito');
 
-    function setCoord(latlng){
-      $coord.value = `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+  function setCoord(latlng){
+    $coord.value = `${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+  }
+
+  function normalizaZona(zStr){
+    if(!zStr) return "";
+    const m = (zStr+"").match(/\d+/);
+    return m ? m[0].padStart(2,"0") : "";
+  }
+  function parsePopupInfo(html){
+    const out = {};
+    if(!html) return out;
+    const re = /<td>([^<]+)<\/td>\s*<td>([^<]*)<\/td>/gi;
+    let m;
+    while((m = re.exec(html))!==null){
+      const k = m[1].trim().toUpperCase();
+      const v = m[2].trim();
+      out[k] = v;
     }
-	
+    return out;
+  }
+  function popupToAttrs(p){
+    const zonaTxt  = p["ZONA"] || "";
+    return {
+      zona_num    : normalizaZona(zonaTxt),
+      zona        : zonaTxt,
+      provincia   : p["PROVINCIA"] || "",
+      distrito    : p["NOMBRE_DIS"] || "",
+      circuito    : p["NOMBRE_CIR"] || "",
+      cod_subcir  : p["COD_SUBCIR"] || "",
+      subcircuito : p["NOMBRE_SUB"] || ""
+    };
+  }
 
-    function normalizaZona(zStr){
-      if(!zStr) return "";
-      const m = (zStr+"").match(/\d+/);
-      return m ? m[0].padStart(2,"0") : "";
+  // punto inicial (acepta coma, punto y coma o espacio)
+  const parsed = ($coord.value || "-0.239389, -79.165556")
+                  .replace(/;/g, ',')
+                  .split(/[,\s]+/)
+                  .map(s => parseFloat(s));
+  const start  = (parsed.length>=2 && parsed.slice(0,2).every(n=>Number.isFinite(n)))
+                  ? [parsed[0], parsed[1]] : [-0.239389,-79.165556];
+
+  const map = L.map('map').setView(start, 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+  const marker = L.marker(start, {draggable:true}).addTo(map);
+
+  // Cargar datos de apoyo
+  window._TERR = {};
+  fetch('{{ asset('geo/territorial_lookup.json') }}')
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(j => { window._TERR = j || {}; })
+    .catch(()=>{ window._TERR = {}; });
+
+  fetch('{{ asset('geo/Polygons_Subci_FeaturesToJSO.geojson') }}')
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(geo => {
+      L.geoJSON(geo, {
+        style:{ color:'#3b82f6', weight:1, fillOpacity:.05 },
+        onEachFeature:(f, layer)=> layer.bindTooltip(f.properties?.Name || f.properties?.NOMBRE_SUB || 'Subcircuito')
+      }).addTo(map);
+    }).catch(()=>{});
+
+  let pointsFC = null;
+  fetch('{{ asset('geo/Points_ExportF_FeaturesToJSO.json') }}')
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+      const feats = (data.features || []).map(f => {
+        const x = f.geometry?.x ?? f.geometry?.coordinates?.[0];
+        const y = f.geometry?.y ?? f.geometry?.coordinates?.[1];
+        if (typeof x !== 'number' || typeof y !== 'number') return null;
+
+        const rawPopup = f.attributes?.PopupInfo || "";
+        const kv = parsePopupInfo(rawPopup);
+        let attrs = popupToAttrs(kv);
+
+        if (attrs.cod_subcir && window._TERR[attrs.cod_subcir]) {
+          const t = window._TERR[attrs.cod_subcir];
+          attrs.distrito    = attrs.distrito    || t.distrito    || "";
+          attrs.circuito    = attrs.circuito    || t.circuito    || "";
+          attrs.subcircuito = attrs.subcircuito || t.subcircuito || "";
+          attrs.zona_num    = attrs.zona_num    || (t.zona ? (t.zona+"").padStart(2,"0") : "");
+          attrs.provincia   = attrs.provincia   || t.provincia   || "";
+        }
+
+        return turf.point([x, y], attrs);
+      }).filter(Boolean);
+
+      pointsFC = turf.featureCollection(feats);
+    })
+    .catch(() => { pointsFC = null; });
+
+  function autocompleteByNearest(latlng){
+    if (!pointsFC || !pointsFC.features.length) return;
+    const clicked = turf.point([latlng.lng, latlng.lat]);
+    const nearest = turf.nearestPoint(clicked, pointsFC);
+    const a = nearest?.properties || {};
+    $zona.value  = a.zona_num || a.zona || "";
+    $subz.value  = a.provincia || "";
+    $dist.value  = a.distrito || "";
+    $circ.value  = a.circuito || "";
+    $subc.value  = a.subcircuito || "";
+  }
+
+  function goTo(latlng, zoom=16){
+    marker.setLatLng(latlng);
+    map.setView(latlng, zoom);
+    setCoord(latlng);
+    autocompleteByNearest(latlng);
+  }
+
+  // Click en mapa / drag marker
+  map.on('click', e => goTo(e.latlng));
+  marker.on('dragend', () => goTo(marker.getLatLng()));
+
+  // ---------- Botón: Ir a coord. ----------
+  document.getElementById('btn-go-coord')?.addEventListener('click',()=>{
+    const txt = ($coord.value || '').trim().replace(/;/g, ',');
+    const parts = txt.split(/[,\s]+/).filter(Boolean).map(Number);
+    if(parts.length>=2 && parts.slice(0,2).every(n=>Number.isFinite(n))){
+      const ll = L.latLng(parts[0], parts[1]);
+      goTo(ll);
+    } else {
+      alert('Coordenadas inválidas.\nUsa: LAT, LNG (ej: -1.23, -78.51)');
     }
-    function parsePopupInfo(html){
-      const out = {};
-      if(!html) return out;
-      const re = /<td>([^<]+)<\/td>\s*<td>([^<]*)<\/td>/gi;
-      let m;
-      while((m = re.exec(html))!==null){
-        const k = m[1].trim().toUpperCase();
-        const v = m[2].trim();
-        out[k] = v;
-      }
-      return out;
+  });
+
+  // ---------- Botón: Ubicación actual ----------
+  document.getElementById('btn-geolocate')?.addEventListener('click',()=>{
+    // Requisito del navegador: HTTPS o localhost
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      alert('Para usar la ubicación actual, abre el sitio en HTTPS o en localhost.');
+      return;
     }
-    function popupToAttrs(p){
-      const zonaTxt  = p["ZONA"] || "";
-      return {
-        zona_num    : normalizaZona(zonaTxt),
-        zona        : zonaTxt,
-        provincia   : p["PROVINCIA"] || "",
-        distrito    : p["NOMBRE_DIS"] || "",
-        circuito    : p["NOMBRE_CIR"] || "",
-        cod_subcir  : p["COD_SUBCIR"] || "",
-        subcircuito : p["NOMBRE_SUB"] || ""
-      };
+    if(!navigator.geolocation){
+      alert('Geolocalización no disponible en este navegador.');
+      return;
     }
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
+        goTo(ll);
+        const acc = pos.coords.accuracy || 0;
+        if (acc && acc < 1000){
+          L.circle(ll, {radius: acc}).addTo(map);
+        }
+      },
+      err=>{
+        let msg = 'No se pudo obtener tu ubicación.';
+        if (err.code===1) msg = 'Permiso de ubicación denegado. Habilítalo en el navegador.';
+        if (err.code===2) msg = 'Posición no disponible.';
+        if (err.code===3) msg = 'Tiempo de espera agotado.';
+        alert(msg);
+      },
+      { enableHighAccuracy:true, timeout:12000, maximumAge:0 }
+    );
+  });
 
-    const parsed = ($coord.value || "-0.239389, -79.165556").split(',').map(s => parseFloat(s.trim()));
-    const start  = (parsed.length===2 && parsed.every(n=>!isNaN(n))) ? parsed : [-0.239389,-79.165556];
+  // autocompletar inicial
+  autocompleteByNearest(marker.getLatLng());
+})();
+</script>
 
-    const map = L.map('map').setView(start, 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-    const marker = L.marker(start, {draggable:true}).addTo(map);
-
-    window._TERR = {};
-    fetch('{{ asset('geo/territorial_lookup.json') }}')
-      .then(r => r.ok ? r.json() : Promise.reject()).then(data => { window._TERR = data || {}; })
-      .catch(()=>{ window._TERR = {}; });
-
-    fetch('{{ asset('geo/Polygons_Subci_FeaturesToJSO.geojson') }}')
-      .then(r => r.ok ? r.json() : Promise.reject()).then(geo => {
-        L.geoJSON(geo, {
-          style:{ color:'#3b82f6', weight:1, fillOpacity:.05 },
-          onEachFeature:(f, layer)=>{ layer.bindTooltip(f.properties?.Name || f.properties?.NOMBRE_SUB || 'Subcircuito'); }
-        }).addTo(map);
-      }).catch(()=>{});
-
-    let pointsFC = null;
-    fetch('{{ asset('geo/Points_ExportF_FeaturesToJSO.json') }}')
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => {
-        const feats = (data.features || []).map(f => {
-          const x = f.geometry?.x ?? f.geometry?.coordinates?.[0];
-          const y = f.geometry?.y ?? f.geometry?.coordinates?.[1];
-          if (typeof x !== 'number' || typeof y !== 'number') return null;
-
-          const rawPopup = f.attributes?.PopupInfo || "";
-          const kv = parsePopupInfo(rawPopup);
-          let attrs = popupToAttrs(kv);
-
-          if (attrs.cod_subcir && window._TERR[attrs.cod_subcir]) {
-            const t = window._TERR[attrs.cod_subcir];
-            attrs.distrito    = attrs.distrito    || t.distrito    || "";
-            attrs.circuito    = attrs.circuito    || t.circuito    || "";
-            attrs.subcircuito = attrs.subcircuito || t.subcircuito || "";
-            attrs.zona_num    = attrs.zona_num    || (t.zona ? (t.zona+"").padStart(2,"0") : "");
-            attrs.provincia   = attrs.provincia   || t.provincia   || "";
-          }
-
-          return turf.point([x, y], attrs);
-        }).filter(Boolean);
-
-        pointsFC = turf.featureCollection(feats);
-      })
-      .catch(() => { pointsFC = null; });
-
-    function autocompleteByNearest(latlng){
-      if (!pointsFC || !pointsFC.features.length) return;
-      const clicked = turf.point([latlng.lng, latlng.lat]);
-      const nearest = turf.nearestPoint(clicked, pointsFC);
-      const a = nearest?.properties || {};
-      $zona.value  = a.zona_num || a.zona || "";
-      $subz.value  = a.provincia || "";
-      $dist.value  = a.distrito || "";
-      $circ.value  = a.circuito || "";
-      $subc.value  = a.subcircuito || "";
-    }
-
-    map.on('click', e => {
-      marker.setLatLng(e.latlng);
-      setCoord(e.latlng);
-      autocompleteByNearest(e.latlng);
-    });
-    marker.on('dragend', () => {
-      const ll = marker.getLatLng();
-      setCoord(ll);
-      autocompleteByNearest(ll);
-    });
-
-    autocompleteByNearest(marker.getLatLng());
-  })();
-  </script>
-
+  
+  
   <script>
   (function(){
     // estilo uniforme a inputs de tablas
