@@ -9,15 +9,59 @@ use Illuminate\Support\Facades\DB;
 
 class DetalleCasoController extends Controller
 {
-    public function edit(Caso $caso)
-    {
-        $detalle    = $caso->detalle;
-        $victimas   = $caso->victimas()->orderBy('tipo')->orderBy('etiqueta')->get();
-        $fallecidos = $victimas->where('tipo', 'occiso')->values();
-        $heridos    = $victimas->where('tipo', 'herido')->values();
 
-        return view('casos.alimentar', compact('caso', 'detalle', 'fallecidos', 'heridos'));
-    }
+
+public function edit(Caso $caso)
+{
+    $detalle  = $caso->detalle;
+
+    // Trae todas las víctimas y normaliza los booleanos a "Sí"/"No"
+    $victimas = $caso->victimas()
+        ->orderBy('tipo')->orderBy('etiqueta')
+        ->get()
+        ->map(function ($v) {
+            $yesNo = function ($val) {
+                return $val === null ? '' : ($val ? 'Sí' : 'No');
+            };
+
+            return [
+                'tipo'          => $v->tipo,
+                'etiqueta'      => $v->etiqueta,
+                'nombres'       => $v->nombres,
+                'apellidos'     => $v->apellidos,
+                'cedula'        => $v->cedula,
+                'edad'          => $v->edad,
+                'sexo'          => $v->sexo,
+                'observacion'   => $v->observacion,
+
+                'alias'         => $v->alias,
+                'nacionalidad'  => $v->nacionalidad,
+                'ocupacion'     => $v->profesion_ocupacion,
+                'movilizacion'  => $v->movilizacion,
+
+                // ← aquí la normalización clave
+                'antecedentes'            => $yesNo($v->antecedentes),
+                'antecedentes_det'        => $v->antecedentes_det,
+
+                'sajte'                   => $yesNo($v->sajte_judicatura),
+                'sajte_det'               => $v->sajte_judicatura_det,
+
+                'noticia_fiscalia'        => $yesNo($v->noticia_del_delito_fiscalia),
+                'noticia_fiscalia_det'    => $v->noticia_del_delito_fiscalia_det,
+
+                'gao'                     => $yesNo($v->pertenece_gao),
+                'gao_det'                 => $v->gao_cargo_funcion,
+            ];
+        });
+
+    $fallecidos = $victimas->where('tipo', 'occiso')->values();
+    $heridos    = $victimas->where('tipo', 'herido')->values();
+
+    return view('casos.alimentar', compact('caso', 'detalle', 'fallecidos', 'heridos'));
+}
+
+
+
 
     public function store(Request $r, Caso $caso)
     {

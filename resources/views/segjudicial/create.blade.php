@@ -3,14 +3,8 @@
 
 @section('content')
 <style>
-  /* ====== Estilo consistente con "Alimentar detalle" ====== */
   :root{
-    --surf:#f8fafc;      /* fondo suave */
-    --stroke:#e5e7eb;    /* borde claro */
-    --ink:#0f172a;       /* texto principal */
-    --muted:#64748b;     /* texto secundario */
-    --brand:#0ea5e9;     /* acento */
-    --badge:#e5e7eb;
+    --surf:#f8fafc; --stroke:#e5e7eb; --ink:#0f172a; --muted:#64748b; --brand:#0ea5e9; --badge:#e5e7eb;
   }
   .page-wrap{max-width:1000px;margin-inline:auto}
   .h1{font-weight:800;letter-spacing:.4px;font-size:clamp(1.25rem,2.2vw,1.6rem);margin:8px 0 18px}
@@ -18,30 +12,21 @@
   .card{background:#fff;border:1px solid var(--stroke);border-radius:14px;margin-bottom:18px}
   .card-pad{padding:16px 18px}
   .section-title{margin:20px 0 10px;font-weight:800;color:var(--muted);letter-spacing:.4px;font-size:.85rem}
-
-  /* key-value lista visual del detalle */
   .kv{display:grid;grid-template-columns:220px 1fr;gap:.35rem 1rem;margin:.15rem 0}
   .kv b{color:var(--muted);font-weight:800;letter-spacing:.3px}
-
-  /* Campos (mismo “peso visual” de Alimentar) */
   .field{margin-bottom:14px}
   .field label{display:block;font-size:.82rem;font-weight:800;color:var(--muted);letter-spacing:.35px;margin-bottom:6px}
   .ctrl{width:100%;padding:.70rem .9rem;border:1px solid var(--stroke);border-radius:10px;outline:0;background:#fff}
   .ctrl:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(14,165,233,.15)}
   select.ctrl{padding:.62rem .8rem}
   textarea.ctrl{min-height:120px;resize:vertical}
-
-  /* Vinculados / Reqs como chips */
   .chips-wrap{background:var(--surf);border:1px solid var(--stroke);border-radius:12px;padding:10px}
   .chips{display:flex;gap:.5rem;flex-wrap:wrap}
   .chip{background:#eef2ff;border:1px solid #c7d2fe;color:#111827;padding:.45rem .7rem;border-radius:999px;font-weight:700}
   .chip .x{margin-left:.45rem;cursor:pointer;font-weight:900;border:0;background:transparent}
   .badge{display:inline-block;background:var(--badge);border-radius:999px;padding:.05rem .5rem;font-size:.75rem;font-weight:800}
-
   .ttu{text-transform:uppercase}
   .upper{text-transform:uppercase}
-
-  /* Grid simple */
   .row{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
   .col-12{grid-column:span 12}
   .col-6{grid-column:span 12}
@@ -54,16 +39,13 @@
     .col-4{grid-column:span 4}
     .col-3{grid-column:span 3}
   }
-
-  /* Botones */
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border:1px solid var(--stroke);background:#fff;border-radius:10px;padding:.65rem 1rem;font-weight:800}
   .btn-primary{background:#22c55e;border-color:#22c55e;color:#fff}
   .btn-ghost{background:#fff}
 </style>
 
 <div class="page-wrap">
-
-  {{-- Título y meta (solo FECHA y DELITO) --}}
+  {{-- Título y meta (FECHA + DELITO) --}}
   <h1 class="h1 ttu">SEGUIMIENTO JUDICIAL — {{ $caso->numero_caso }}</h1>
   <div class="meta-line ttu">
     <span>FECHA: {{ $contexto['fecha_hora'] ?: '—' }}</span>
@@ -79,7 +61,7 @@
     </div>
   @endif
 
-  {{-- ========== DETALLE DEL CASO (con ECU aquí) ========== --}}
+  {{-- ===== DETALLE DEL CASO ===== --}}
   <div class="card card-pad">
     <div class="section-title ttu">DETALLE DEL CASO</div>
 
@@ -95,7 +77,20 @@
     <div class="kv"><b class="ttu">LUGAR DEL HECHO:</b> {{ $contexto['lugar_hecho'] ?: '—' }}</div>
     <div class="kv"><b class="ttu">COORDENADAS:</b> {{ $contexto['coordenadas'] ?: '—' }}</div>
     <div class="kv"><b class="ttu">CRIMINALÍSTICA:</b> {{ $contexto['criminalistica'] ?: '—' }}</div>
-    <div class="kv"><b class="ttu">¿INDICIOS?:</b> {{ $contexto['indicios'] ?: '—' }}</div>
+
+    {{-- INDICIOS: SI/NO + detalle desde Alimentar --}}
+    <div class="kv">
+      <b class="ttu">¿INDICIOS?:</b>
+      <div>
+        {{ $contexto['indicios'] ?: '—' }}
+        @if(!empty($contexto['indicios_lines']))
+          <div style="margin-top:.35rem; white-space:pre-line">
+            {!! nl2br(e(implode("\n", $contexto['indicios_lines']))) !!}
+          </div>
+        @endif
+      </div>
+    </div>
+
     <div class="kv"><b class="ttu">TIPO DE ARMA:</b> {{ $contexto['tipo_arma'] ?: '—' }}</div>
 
     @php
@@ -108,11 +103,15 @@
     <div class="kv">
       <b class="ttu">FALLECIDO{{ $fall->count()===1?'':'S' }}:</b>
       <div>
-        @if($fall->count()>1)<span class="badge ttu">MÚLTIPLE ({{ $fall->count() }})</span><br>@endif
+        @if($fall->count()>1)
+          <span class="badge ttu">MÚLTIPLE ({{ $fall->count() }})</span><br>
+        @endif
         <ul style="margin:8px 0 0 18px">
           @forelse($fall as $p)
             <li class="upper">{{ $p->nombre }}{{ $p->cedula ? " — {$p->cedula}" : '' }}</li>
-          @empty <li>—</li> @endforelse
+          @empty
+            <li>—</li>
+          @endforelse
         </ul>
       </div>
     </div>
@@ -123,13 +122,15 @@
         <ul style="margin:0 0 0 18px">
           @forelse($her as $p)
             <li class="upper">{{ $p->nombre }}{{ $p->cedula ? " — {$p->cedula}" : '' }}</li>
-          @empty <li>—</li> @endforelse
+          @empty
+            <li>—</li>
+          @endforelse
         </ul>
       </div>
     </div>
   </div>
 
-  {{-- ========== FORMULARIO ========== --}}
+  {{-- ===== FORMULARIO ===== --}}
   <div class="section-title ttu">INGRESAR DATOS DE LA INSTRUCCIÓN FISCAL</div>
 
   <form method="POST" action="{{ route('segjudicial.store',$caso->id) }}">
@@ -211,11 +212,10 @@
         </select>
       </div>
 
-      {{-- VINCULADOS: input ancho y botón debajo --}}
+      {{-- Vinculados --}}
       <div class="col-12 field">
         <label class="ttu">VINCULADOS</label>
-        <input id="vinculadoInput" type="text"
-               class="ctrl upper"
+        <input id="vinculadoInput" type="text" class="ctrl upper"
                placeholder="ESCRIBE NOMBRE(S) Y APELLIDO(S), PRESIONA ENTER O USA EL BOTÓN AGREGAR">
         <button id="addVinculadoBtn" type="button" class="btn btn-ghost ttu" style="margin-top:8px">AGREGAR</button>
 
@@ -276,7 +276,7 @@
         </div>
       </div>
 
-      {{-- === REQUERIMIENTOS REALIZADOS (select + chips) === --}}
+      {{-- Requerimientos realizados --}}
       <div class="col-6 field">
         <label class="ttu">REQUERIMIENTOS REALIZADOS</label>
         <div style="display:flex; gap:.5rem; align-items:center">
@@ -306,7 +306,7 @@
         </div>
       </div>
 
-      {{-- === REQUERIMIENTOS PENDIENTES (select + chips) === --}}
+      {{-- Requerimientos pendientes --}}
       <div class="col-6 field">
         <label class="ttu">REQUERIMIENTOS PENDIENTES</label>
         <div style="display:flex; gap:.5rem; align-items:center">
@@ -349,7 +349,6 @@
   </form>
 </div>
 
-{{-- ===== JS (un solo <script>, sin anidaciones) ===== --}}
 <script>
 (function () {
   /* ---------- Vinculados ---------- */
@@ -399,7 +398,7 @@
     btn.addEventListener('click', ()=> addVinc(btn.dataset.value || btn.textContent));
   });
 
-  /* ---------- Reqs (select -> chips) ---------- */
+  /* ---------- Select -> chips (reqs) ---------- */
   function wireSelectChips(selectId, btnId, chipsBoxId, inputName) {
     const sel   = document.getElementById(selectId);
     const btn   = document.getElementById(btnId);

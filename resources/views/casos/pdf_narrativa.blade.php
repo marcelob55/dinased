@@ -15,11 +15,27 @@
         return $s !== '' ? $s : '—';
     };
 
-    /* ========= TÍTULO sin duplicar "VERIFICACIÓN" ========= */
-    $raw = (string)($d->verificacion ?? '');
-    $txt = trim(preg_replace('/\s+/u', ' ', $raw));
-    $txt = preg_replace('/^(?:[\s\x{A0}]*verificaci(?:ó|o)n[\s\x{A0}]*)+/iu', '', $txt);
-    $titulo = $txt !== '' ? 'VERIFICACIÓN '.$txt : 'VERIFICACIÓN DE UNA PERSONA FALLECIDA POR ARMA DE FUEGO';
+
+
+// ===== TÍTULO sin duplicar "VERIFICACIÓN" (soporta NBSP y marcas invisibles) =====
+$raw = (string)($d->verificacion ?? '');
+
+// 1) Limpia marcas de dirección y NBSP al inicio
+$clean = preg_replace('/^[\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}\x{00A0}\s]+/u', '', $raw);
+
+// 2) Normaliza espacios
+$norm = trim(preg_replace('/\s+/u', ' ', $clean));
+
+// 3) Quita 1+ repeticiones de "verificación" al inicio (con o sin acento, tolera NBSP)
+$sin  = preg_replace('/^(?:[\x{200E}\x{200F}\x{00A0}\s]*verificaci[oó]n[\x{200E}\x{200F}\x{00A0}\s]*)+/iu', '', $norm);
+$sin  = trim($sin);
+
+$titulo = $sin !== ''
+    ? 'VERIFICACIÓN ' . mb_strtoupper($sin)
+    : 'VERIFICACIÓN DE UNA PERSONA FALLECIDA POR ARMA DE FUEGO';
+
+
+
 
     /* ========= FECHAS / HORAS (DATE + TIME separados) ========= */
     // Hecho
@@ -36,27 +52,47 @@
     $occisos = $caso->victimas->where('tipo','occiso')->sortBy('etiqueta');
     $heridos = $caso->victimas->where('tipo','herido')->sortBy('etiqueta');
 
-    $victimaLinea = function($v){
-        $nombre = trim(
-            ($v->apellidos ? mb_strtoupper($v->apellidos) : '')
-            .' '.
-            ($v->nombres ? mb_strtoupper($v->nombres) : '')
-        );
-        return [
-            'titulo' => mb_strtoupper($v->tipo).' '.($v->etiqueta ?: '—').': '.$nombre,
-            'cedula' => $v->cedula ?: '—',
-            'edad'   => $v->edad ? ($v->edad.' años') : '—',
-            'alias'  => $v->alias ?: 'Se desconoce',
-            'nac'    => $v->nacionalidad ?: '—',
-            'prof'   => $v->profesion_ocupacion ?: 'Se desconoce',
-            'mov'    => $v->movilizacion ?: 'Se desconoce',
-            'ant'    => isset($v->antecedentes) ? ($v->antecedentes ? 'SI' : 'NO') : '—',
-            'satje'  => isset($v->sajte_judicatura) ? ($v->sajte_judicatura ? 'SI' : 'NO') : '—',
-            'notDel' => isset($v->noticia_del_delito_fiscalia) ? ($v->noticia_del_delito_fiscalia ? 'SI' : 'NO') : '—',
-            'perGAO' => isset($v->pertenece_gao) ? ($v->pertenece_gao ? 'SI' : 'NO') : '—',
-            'cargo'  => $v->gao_cargo_funcion ?: 'Se desconoce',
-        ];
+
+
+$victimaLinea = function($v){
+    $nombre = trim(
+        ($v->apellidos ? mb_strtoupper($v->apellidos) : '')
+        .' '.
+        ($v->nombres ? mb_strtoupper($v->nombres) : '')
+    );
+
+    // helpers Yes/No con detalle
+    $yn = function($flag, $det = null) {
+        if (!isset($flag)) return '—';
+        if ($flag) {
+            return 'SI' . (isset($det) && $det !== '' ? ' — ' . $det : '');
+        }
+        return 'NO';
     };
+
+    return [
+        'titulo' => mb_strtoupper($v->tipo).' '.($v->etiqueta ?: '—').': '.$nombre,
+        'cedula' => $v->cedula ?: '—',
+        'edad'   => $v->edad ? ($v->edad.' años') : '—',
+        'alias'  => $v->alias ?: 'Se desconoce',
+        'nac'    => $v->nacionalidad ?: '—',
+        'prof'   => $v->profesion_ocupacion ?: 'Se desconoce',
+        'mov'    => $v->movilizacion ?: 'Se desconoce',
+
+        // Aquí van con detalle cuando es "Sí"
+        'ant'    => $yn($v->antecedentes, $v->antecedentes_det ?? null),
+        'satje'  => $yn($v->sajte_judicatura, $v->sajte_judicatura_det ?? null),
+        'notDel' => $yn($v->noticia_del_delito_fiscalia, $v->noticia_del_delito_fiscalia_det ?? null),
+
+        'perGAO' => isset($v->pertenece_gao) ? ($v->pertenece_gao ? 'SI' : 'NO') : '—',
+        'cargo'  => $v->gao_cargo_funcion ?: 'Se desconoce',
+    ];
+};
+
+
+
+
+
 
     /* ====== Indicios (normalización robusta) ====== */
     $indiciosYN = $d->indicios ?: '—';
@@ -205,13 +241,14 @@
 <div class="blk"><span class="b">SUBCIRCUITO:</span> {{ $fmt($d->subcircuito ?? null) }}</div>
 
 <div class="blk"><span class="b">FECHA/HORA DEL HECHO:</span><br>{{ $fechaHoraHecho }}{{ $horaHecho ? ' Aproximadamente.' : '' }}</div>
+<div class="blk"><span class="b">FECHA/HORA LEVANTAMIENTO:</span><br>{{ $fechaHoraLev }}</div>
 
 <div class="blk"><span class="b">LUGAR DEL HECHO:</span><br>{{ $fmt($d->lugar_hecho ?? null) }}</div>
 
 <div class="blk"><span class="b">ESPACIO:</span> {{ $fmt($d->espacio ?? null) }}</div>
 <div class="blk"><span class="b">ÁREA:</span> {{ $fmt($d->area ?? null) }}</div>
 
-<div class="blk"><span class="b">FECHA/HORA LEVANTAMIENTO:</span><br>{{ $fechaHoraLev }}</div>
+
 
 <div class="blk"><span class="b">COORDENADAS:</span><br>{{ $fmt($d->coordenadas ?? null) }}</div>
 
