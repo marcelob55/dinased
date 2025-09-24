@@ -25,4 +25,10 @@ class Seguimiento extends Model
 	{ 
 		return $this->belongsTo(Caso::class,'caso_id'); 
 	}
+	
+	public function indicios()
+	{ 
+		return $this->hasMany(Indicio::class,'seguimiento_id','id'); 
+	}
+	
 }
