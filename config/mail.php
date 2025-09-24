@@ -115,4 +115,6 @@ return [
         ],
     ],
 
+'login_alerts' => env('LOGIN_ALERTS', false),
+
 ];
