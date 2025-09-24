@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('body-class','no-carousel')
 
 @section('content')
 <div class="casos-index">
@@ -38,7 +39,7 @@
     </table>
 
     @if($casos->hasPages())
-      <nav style="margin-top:12px">
+      <nav style="margin-top:12px" role="navigation" aria-label="Pagination Navigation">
         {{ $casos->onEachSide(1)->links() }}
       </nav>
     @endif
@@ -46,25 +47,81 @@
     <p>No hay casos registrados.</p>
   @endif
 </div>
-
-<style>
-  /* Paginación más compacta */
-  .casos-index .pagination { font-size: .9rem; }
-  .casos-index .pagination .page-link { padding: .25rem .5rem; line-height: 1.2; }
-  .casos-index .pagination .page-link svg,
-  .casos-index .pagination .page-link i { width: 14px; height: 14px; font-size: 14px; }
-
-  /* Si en tu layout aún se cargan estilos de carrusel, minimiza flechas: */
-  .casos-index .carousel-control { width: 28px; }
-  .casos-index .carousel-control .glyphicon-chevron-left,
-  .casos-index .carousel-control .glyphicon-chevron-right,
-  .casos-index .carousel-control .icon-prev,
-  .casos-index .carousel-control .icon-next {
-    width: 16px; height: 16px; margin-top: -8px; font-size: 16px;
-  }
-  .casos-index .carousel-control-prev-icon,
-  .casos-index .carousel-control-next-icon {
-    width: 16px; height: 16px; background-size: 100% 100%;
-  }
-</style>
 @endsection
+
+@push('styles')
+<style>
+  /* NO tocar los íconos de la paginación */
+  nav[aria-label*="Pagination"] svg { display:inline-block; width:1em; height:1em; }
+
+  /* Apaga sliders/carruseles comunes cuando el body tiene .no-carousel */
+  body.no-carousel .carousel,
+  body.no-carousel .carousel-inner,
+  body.no-carousel .carousel-item,
+  body.no-carousel .carousel-control,
+  body.no-carousel .carousel-control-prev,
+  body.no-carousel .carousel-control-next,
+  body.no-carousel .carousel-control-prev-icon,
+  body.no-carousel .carousel-control-next-icon,
+  body.no-carousel .glyphicon-chevron-left,
+  body.no-carousel .glyphicon-chevron-right,
+  body.no-carousel .icon-prev,
+  body.no-carousel .icon-next,
+  body.no-carousel .splide, body.no-carousel .splide__arrows, body.no-carousel .splide__arrow,
+  body.no-carousel .glide,  body.no-carousel .glide__arrows,  body.no-carousel .glide__arrow,
+  body.no-carousel .flickity-button, body.no-carousel .flickity-prev-next-button,
+  body.no-carousel .tns-outer, body.no-carousel .tns-controls [data-controls="prev"],
+  body.no-carousel .tns-controls [data-controls="next"],
+  body.no-carousel .swiper, body.no-carousel .swiper-button-prev, body.no-carousel .swiper-button-next,
+  body.no-carousel .owl-carousel, body.no-carousel .owl-nav, body.no-carousel .owl-prev, body.no-carousel .owl-next,
+  body.no-carousel .flexslider, body.no-carousel .flex-direction-nav {
+    display:none !important; width:0 !important; height:0 !important;
+    overflow:hidden !important; pointer-events:none !important;
+  }
+
+  /* Muchas librerías dibujan flechas con ::before/::after */
+  body.no-carousel *::before,
+  body.no-carousel *::after { content:none !important; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+(function(){
+  // NO tocar nada dentro de la paginación
+  const PAG = document.querySelector('nav[aria-label*="Pagination"]');
+  const SEL = [
+    // bootstrap / genérico
+    '.carousel', '.carousel-inner', '.carousel-item',
+    '.carousel-control', '.carousel-control-prev', '.carousel-control-next',
+    '.carousel-control-prev-icon', '.carousel-control-next-icon',
+    '.glyphicon-chevron-left', '.glyphicon-chevron-right', '.icon-prev', '.icon-next',
+    // libs
+    '.splide', '.splide__arrows', '.splide__arrow',
+    '.glide', '.glide__arrows', '.glide__arrow',
+    '.flickity-button', '.flickity-prev-next-button',
+    '.tns-outer', '.tns-controls [data-controls="prev"]', '.tns-controls [data-controls="next"]',
+    '.swiper', '.swiper-button-prev', '.swiper-button-next',
+    '.owl-carousel', '.owl-nav', '.owl-prev', '.owl-next',
+    '.flexslider', '.flex-direction-nav',
+    // genéricos
+    '[class*="arrow"]', '[class*="prev"]', '[class*="next"]'
+  ].join(',');
+
+  function nuke(root){
+    root.querySelectorAll(SEL).forEach(el => {
+      if (!PAG || !PAG.contains(el)) el.remove();
+    });
+  }
+
+  // 1) borra los actuales
+  nuke(document);
+
+  // 2) si se crean luego, bórralos también
+  const mo = new MutationObserver(muts => {
+    for (const m of muts) for (const n of m.addedNodes) if (n.nodeType===1) nuke(n);
+  });
+  mo.observe(document.documentElement, {childList:true, subtree:true});
+})();
+</script>
+@endpush

@@ -8,8 +8,87 @@
   <link rel="icon" href="{{ asset('assets/img/favicon.png') }}">
   <link rel="stylesheet" href="{{ asset('assets/css/base.css') }}">
   @stack('styles')
+    
+	
+<style>
+  /* ===== Carruseles comunes ===== */
+  body.no-carousel .carousel,
+  body.no-carousel .carousel-inner,
+  body.no-carousel .carousel-item,
+  body.no-carousel .carousel-control,
+  body.no-carousel .carousel-control-prev,
+  body.no-carousel .carousel-control-next,
+  body.no-carousel .carousel-control-prev-icon,
+  body.no-carousel .carousel-control-next-icon,
+  body.no-carousel .glyphicon-chevron-left,
+  body.no-carousel .glyphicon-chevron-right,
+  body.no-carousel .icon-prev,
+  body.no-carousel .icon-next,
+
+  /* Bootstrap / genéricos */
+  body.no-carousel [class*="carousel"],
+  body.no-carousel [aria-label="Previous"],
+  body.no-carousel [aria-label="Next"],
+
+  /* Swiper */
+  body.no-carousel .swiper,
+  body.no-carousel .swiper-button-prev,
+  body.no-carousel .swiper-button-next,
+
+  /* Splide */
+  body.no-carousel .splide,
+  body.no-carousel .splide__arrows,
+  body.no-carousel .splide__arrow,
+  body.no-carousel .splide__arrow--prev,
+  body.no-carousel .splide__arrow--next,
+
+  /* Glide.js */
+  body.no-carousel .glide,
+  body.no-carousel .glide__arrows,
+  body.no-carousel .glide__arrow,
+
+  /* Flickity */
+  body.no-carousel .flickity-button,
+  body.no-carousel .flickity-prev-next-button,
+
+  /* Tiny-slider */
+  body.no-carousel .tns-outer,
+  body.no-carousel .tns-controls [data-controls="prev"],
+  body.no-carousel .tns-controls [data-controls="next"],
+
+  /* OwlCarousel */
+  body.no-carousel .owl-carousel,
+  body.no-carousel .owl-nav,
+  body.no-carousel .owl-prev,
+  body.no-carousel .owl-next,
+
+  /* Flexslider */
+  body.no-carousel .flexslider,
+  body.no-carousel .flex-direction-nav {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* Muchas librerías dibujan las flechas con ::before/::after */
+  body.no-carousel *::before,
+  body.no-carousel *::after {
+    content: none !important;
+  }
+</style>
+
+<style>
+  body.no-carousel *::before,
+  body.no-carousel *::after { content: none !important; }
+</style>
+
+	
+	
 </head>
-<body>
+<body class="@yield('body-class')">
+
   {{-- ===== Header ===== --}}
   <header class="site-header">
     <div class="brand">
@@ -73,8 +152,14 @@
   <footer class="site-footer">
     <small>© {{ date('Y') }} DINASED — Sistema de Casos</small>
   </footer>
+  
 
+  {{-- al final, donde cargas el JS --}}
+@unless (request()->is('casos*'))
   <script src="{{ asset('assets/js/app.js') }}"></script>
-  @stack('scripts')
+@endunless
+@stack('scripts')
+
+
 </body>
 </html>
