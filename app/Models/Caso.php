@@ -18,6 +18,8 @@ class Caso extends Model
 
     protected $casts = [
         'fecha' => 'date',
+		'created_at' => 'datetime',
+		'updated_at' => 'datetime',
     ];
 
     public function detalle()

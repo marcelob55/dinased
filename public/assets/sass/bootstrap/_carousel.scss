@@ -163,6 +163,27 @@
       content: '\203a';// SINGLE RIGHT-POINTING ANGLE QUOTATION MARK (U+203A)
     }
   }
+  
+  /* Sólo en /casos */
+.casos-index .carousel-control { width: 28px; }
+.casos-index .carousel-control .glyphicon-chevron-left,
+.casos-index .carousel-control .glyphicon-chevron-right,
+.casos-index .carousel-control .icon-prev,
+.casos-index .carousel-control .icon-next {
+  width: 16px; height: 16px; margin-top: -8px; font-size: 16px;
+}
+
+/* Si tu HTML usa Bootstrap 4/5 */
+.casos-index .carousel-control-prev-icon,
+.casos-index .carousel-control-next-icon {
+  width: 16px; height: 16px; background-size: 100% 100%;
+}
+
+  
+  
+  
+  
+  
 }
 
 // Optional indicator pips

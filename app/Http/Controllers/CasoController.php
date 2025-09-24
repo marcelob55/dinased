@@ -10,12 +10,13 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class CasoController extends Controller
 {
     /** Listado */
-    public function index()
-    {
-        // Ordena por fecha (desc) y pagina de 25 en 25
-        $casos = Caso::latest('fecha')->paginate(25);
-        return view('casos.index', compact('casos'));
-    }
+	public function index()
+	{
+		// si además quieres poder mostrar hora_del_hecho:
+		$casos = Caso::with('detalle')->latest('id')->paginate(20);
+		return view('casos.index', compact('casos'));
+	}
+
 
     /** Form crear */
     public function create()
