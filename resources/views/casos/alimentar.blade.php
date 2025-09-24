@@ -706,24 +706,36 @@
 </div>
 
 
-  {{-- 9. Reporta --}}
-  <div class="section">
-    <h3>9. Reporta</h3>
-    <div class="form-grid">
-      <div class="field col-12">
-        <select name="reporta" class="ctrl" data-other="#reporta_otro">
-          <option value="">— Seleccione —</option>
-          @foreach($REPORTA_OPTS as $o)
-            <option value="{{ $o }}" {{ $repSelectVal===$o?'selected':'' }}>{{ $o }}</option>
-          @endforeach
-          <option value="OTRO" {{ $repSelectVal==='OTRO'?'selected':'' }}>OTRO</option>
-        </select>
-        <input id="reporta_otro" type="text" class="ctrl" name="reporta_otro"
-               placeholder="Especifique otro…" value="{{ $repOtroVal }}"
-               style="margin-top:6px; {{ $repSelectVal==='OTRO'?'':'display:none' }}">
-      </div>
+{{-- 9. Reporta --}}
+<div class="section">
+  <h3>9. Reporta</h3>
+  <div class="form-grid">
+    <div class="field col-12">
+      @php
+        $agencias      = config('agencias.dinased');
+        $repSelectVal  = old('reporta', $detalle->reporta ?? '');
+        // si lo guardado no está en la lista, tratarlo como "OTRO"
+        $isOther       = $repSelectVal && !in_array($repSelectVal, $agencias, true);
+        $selectValue   = $isOther ? 'OTRO' : $repSelectVal;
+        $repOtroVal    = old('reporta_otro', $isOther ? $repSelectVal : '');
+      @endphp
+
+      <select name="reporta" class="ctrl" data-other="#reporta_otro">
+        <option value="">— Seleccione —</option>
+        @foreach($agencias as $o)
+          <option value="{{ $o }}" {{ $selectValue === $o ? 'selected' : '' }}>{{ $o }}</option>
+        @endforeach
+        <option value="OTRO" {{ $selectValue === 'OTRO' ? 'selected' : '' }}>OTRO</option>
+      </select>
+
+      <input id="reporta_otro" type="text" class="ctrl" name="reporta_otro"
+             placeholder="Especifique otro…"
+             value="{{ $repOtroVal }}"
+             style="margin-top:6px; {{ $selectValue==='OTRO' ? '' : 'display:none' }}">
     </div>
   </div>
+</div>
+
 
   <button type="submit" style="margin-top:.5rem">Guardar detalle</button>
 </form>

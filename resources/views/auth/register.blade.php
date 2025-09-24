@@ -42,9 +42,21 @@
     </div>
 
     <div class="col-md-6">
-      <label class="form-label">Agencia</label>
-      <input name="agencia" class="form-control" value="{{ old('agencia') }}">
-    </div>
+		<label class="form-label">Agencia DINASED</label>
+		<select name="agencia" class="form-select" required>
+		<option value="">— Seleccione —</option>
+			@foreach($agencias as $opt)
+		<option value="{{ $opt }}" {{ old('agencia')===$opt ? 'selected' : '' }}>
+			{{ $opt }}
+		</option>
+			@endforeach
+		</select>
+			@error('agencia') <div class="text-danger small">{{ $message }}</div> @enderror
+	
+	</div>
+	
+	
+	
     <div class="col-md-6">
       <label class="form-label">Equipo</label>
       <input name="equipo" class="form-control" value="{{ old('equipo') }}">

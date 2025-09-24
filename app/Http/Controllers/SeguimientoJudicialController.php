@@ -28,39 +28,50 @@ class SeguimientoJudicialController extends Controller
         // Coords (nombres alternativos)
         $lat = $detalle->lat ?? $detalle->latitud ?? null;
         $lng = $detalle->lng ?? $detalle->longitud ?? $detalle->lon ?? null;
+		
+		$toSiNo = function ($v) {
+		if ($v === null) return null;
+		$s = strtoupper(trim((string)$v));
+		return $s === 'SI' ? 'SI' : ($s === 'NO' ? 'NO' : null);
+};
+
 
         $contexto = [
-            'verificacion'   => $detalle->verificacion ?? null,
-            'ecu'            => $detalle->codigo_ecu ?? $detalle->codigo_ecu911 ?? null,
-            'zona'           => $detalle->zona ?? null,
-            'subzona'        => $detalle->subzona ?? null,
-            'distrito'       => $detalle->distrito ?? null,
-            'circuito'       => $detalle->circuito ?? null,
-            'subcircuito'    => $detalle->subcircuito ?? null,
-            'espacio'        => $detalle->espacio ?? null,
-            'area'           => $detalle->area ?? null,
+			'verificacion'   => $detalle->verificacion ?? null,
+			'ecu'            => $detalle->codigo_ecu ?? $detalle->codigo_ecu911 ?? null,
+			'zona'           => $detalle->zona ?? null,
+			'subzona'        => $detalle->subzona ?? null,
+			'distrito'       => $detalle->distrito ?? null,
+			'circuito'       => $detalle->circuito ?? null,
+			'subcircuito'    => $detalle->subcircuito ?? null,
+			'espacio'        => $detalle->espacio ?? null,
+			'area'           => $detalle->area ?? null,
 
-            'fecha_hora'     => $detalle->fecha_hora_del_hecho
-                                ?? $detalle->fecha_hora_hecho
-                                ?? $detalle->fecha_hecho
-                                ?? null,
+			'fecha_hora'     => $detalle->fecha_hora_del_hecho
+								?? $detalle->fecha_hora_hecho
+								?? $detalle->fecha_hecho
+								?? null,
 
-            'lugar_hecho'    => $detalle->lugar_del_hecho ?? $detalle->lugar_hecho ?? null,
-            'coordenadas'    => ($lat && $lng) ? "{$lat}, {$lng}" : null,
+			'lugar_hecho'    => $detalle->lugar_del_hecho ?? $detalle->lugar_hecho ?? null,
+			'coordenadas'    => ($lat && $lng) ? "{$lat}, {$lng}" : null,
 
-            'criminalistica' => isset($detalle->criminalistica)
-                                ? ($detalle->criminalistica ? 'SI' : 'NO')
-                                : null,
-            'indicios'       => isset($detalle->indicios)
-                                ? ($detalle->indicios ? 'SI' : 'NO')
-                                : null,
+			// AHORA respeta "SI"/"NO" guardados como texto
+			'criminalistica' => $toSiNo($detalle->criminalistica ?? null),
+			'indicios'       => $toSiNo($detalle->indicios ?? null),
 
-            'tipo_arma'      => $detalle->tipo_de_arma ?? $detalle->tipo_arma ?? null,
-            'tipo_delito'    => $detalle->tipo_de_delito ?? $detalle->tipo_delito ?? null,
-            'estado_caso'    => $detalle->estado_del_caso ?? $detalle->estado_caso ?? null,
-            'motivacion'     => $detalle->motivacion ?? null,
-            'justificacion'  => $detalle->justificacion ?? null,
-        ];
+			'tipo_arma'      => $detalle->tipo_de_arma ?? $detalle->tipo_arma ?? null,
+			'tipo_delito'    => $detalle->tipo_de_delito ?? $detalle->tipo_delito ?? null,
+			'estado_caso'    => $detalle->estado_del_caso ?? $detalle->estado_caso ?? null,
+			'motivacion'     => $detalle->motivacion ?? null,
+			'justificacion'  => $detalle->justificacion ?? null,
+
+			// para mostrar lista debajo de "¿INDICIOS?"
+			'indicios_lines' => !empty($detalle->indicios_detalle)
+                        ? preg_split('/\r\n|\r|\n/', trim($detalle->indicios_detalle))
+                        : [],
+			];
+		
+		
 
         /* ---------------------------------------------------------
          * 2) Fallecidos / Heridos para el encabezado
@@ -168,69 +179,54 @@ $causas = DB::table('seguimiento')
      *
      * Cada item es un objeto con ->nombre y ->cedula.
      */
-    private function extraerPersonasDelCaso(Caso $caso): array
-    {
-        $fallecidos = collect();
-        $heridos    = collect();
+	private function extraerPersonasDelCaso(Caso $caso): array
+	{
+		$mapPersona = function ($row) {
+			$nombre = $this->armarNombre($row);
+			return $nombre ? (object)[
+				'nombre' => $nombre,
+				'cedula' => $row->cedula ?? null,
+			] : null;
+		};
 
-        // 1) Si existen relaciones Eloquent, úsalas
-        if (method_exists($caso, 'victimas')) {
-            try {
-                $victimas = $caso->victimas ?: collect();
-                $fallecidos = $victimas->map(function ($v) {
-                    $nombre = $this->armarNombre($v);
-                    return (object)[
-                        'nombre' => $nombre,
-                        'cedula' => $v->cedula ?? null,
-                    ];
-                })->filter(fn($p) => $p->nombre); // todas como "fallecidos" si no hay flag
-            } catch (\Throwable $e) {
-                // continúa con el plan B
-            }
-        }
+		$fallecidos = collect();
+		$heridos    = collect();
 
-        if (method_exists($caso, 'detenidos')) {
-            try {
-                $detenidos = $caso->detenidos ?: collect();
-                $heridos = $detenidos->map(function ($d) {
-                    $nombre = $this->armarNombre($d);
-                    return (object)[
-                        'nombre' => $nombre,
-                        'cedula' => $d->cedula ?? null,
-                    ];
-                })->filter(fn($p) => $p->nombre);
-            } catch (\Throwable $e) {
-                // sigue abajo
-            }
-        }
+		// 1) Si existe la relación victimas(), úsala y filtra por tipo
+		if (method_exists($caso, 'victimas')) {
+			try {
+				$vics = $caso->victimas ?: collect();
 
-        // 2) Si faltan datos, intenta leer tablas directamente
-        if ($fallecidos->isEmpty() && Schema::hasTable('victimas')) {
-            try {
-                $rows = DB::table('victimas')->where('caso_id', $caso->id)->get();
-                $fallecidos = $rows->map(function ($r) {
-                    return (object)[
-                        'nombre' => $this->armarNombre($r),
-                        'cedula' => $r->cedula ?? null,
-                    ];
-                })->filter(fn($p) => $p->nombre);
-            } catch (\Throwable $e) {}
-        }
+				$fallecidos = $vics->where('tipo', 'occiso')
+								   ->map($mapPersona)->filter()->values();
 
-        if ($heridos->isEmpty() && Schema::hasTable('detenidos')) {
-            try {
-                $rows = DB::table('detenidos')->where('caso_id', $caso->id)->get();
-                $heridos = $rows->map(function ($r) {
-                    return (object)[
-                        'nombre' => $this->armarNombre($r),
-                        'cedula' => $r->cedula ?? null,
-                    ];
-                })->filter(fn($p) => $p->nombre);
-            } catch (\Throwable $e) {}
-        }
+				$heridos    = $vics->where('tipo', 'herido')
+								   ->map($mapPersona)->filter()->values();
+			} catch (\Throwable $e) {
+				// fallback BD abajo
+			}
+		}
 
-        return [$fallecidos->values(), $heridos->values()];
-    }
+		// 2) Fallback directo a la BD
+		if ($fallecidos->isEmpty()) {
+			try {
+				$rows = \DB::table('victimas')
+					->where('caso_id', $caso->id)->where('tipo', 'occiso')->get();
+				$fallecidos = collect($rows)->map($mapPersona)->filter()->values();
+			} catch (\Throwable $e) {}
+		}
+
+		if ($heridos->isEmpty()) {
+			try {
+				$rows = \DB::table('victimas')
+					->where('caso_id', $caso->id)->where('tipo', 'herido')->get();
+				$heridos = collect($rows)->map($mapPersona)->filter()->values();
+			} catch (\Throwable $e) {}
+		}
+
+		return [$fallecidos, $heridos];
+	}
+
 
     /**
      * Construye un nombre legible a partir de distintos esquemas de columnas.
