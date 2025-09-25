@@ -15,6 +15,14 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\CasoWhatsappController;
 Route::get('casos/{caso}/whatsapp', [CasoWhatsappController::class, 'show'])
      ->name('casos.whatsapp'); // ?mode=copy|pdf (default: copy)
+	 
+	 
+use App\Http\Controllers\SegJudicialDashboardController;
+
+Route::get('/dashboard/segjudicial', [SegJudicialDashboardController::class, 'index'])
+     ->middleware('auth')
+     ->name('segjudicial.dashboard');
+
 
 /* ---------- Login / Logout ---------- */
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');

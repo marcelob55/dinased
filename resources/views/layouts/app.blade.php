@@ -109,6 +109,12 @@
 
         <a href="{{ route('casos.create') }}"
            class="btn btn--link {{ request()->routeIs('casos.create') ? 'is-active' : '' }}">Nuevo caso</a>
+ 
+		<a href="{{ route('segjudicial.dashboard') }}"
+			class="btn btn--link {{ request()->routeIs('segjudicial.dashboard') ? 'is-active' : '' }}">
+			Dashboard judicial
+		</a>
+
 
         <form action="{{ route('logout') }}" method="POST" style="display:inline">
           @csrf
