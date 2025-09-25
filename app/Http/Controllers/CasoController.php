@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 
+use Illuminate\Support\Facades\DB;
+
 class CasoController extends Controller
 {
     /** Listado */
@@ -103,4 +105,51 @@ class CasoController extends Controller
         // stream() abre en el navegador; download() descarga
         return $pdf->stream('Caso_'.$caso->numero_caso.'.pdf');
     }
+	
+	
+	   /** Renombrar “Nombre del caso” (columna label) */
+    public function updateLabel(Request $request, Caso $caso)
+    {
+        $request->validate([
+            'label' => ['required','string','max:255'],
+        ]);
+
+        $caso->update(['label' => $request->label]);
+
+        return back()->with('ok', 'Nombre del caso actualizado.');
+    }
+
+    /** Eliminar caso + todo lo asociado */
+    public function destroy(Caso $caso)
+    {
+        DB::transaction(function () use ($caso) {
+            // 1) Seguimiento + indicios
+            if ($caso->seguimiento) {
+                // Si tienes relación en el modelo Seguimiento:
+                // $caso->seguimiento->indicios()->delete();
+                // $caso->seguimiento()->delete();
+
+                // O directo por DB (por si faltan relaciones):
+                DB::table('indicios')->whereIn(
+                    'seguimiento_id',
+                    DB::table('seguimiento')->where('caso_id', $caso->id)->pluck('id')
+                )->delete();
+                DB::table('seguimiento')->where('caso_id', $caso->id)->delete();
+            }
+
+            // 2) Víctimas
+            $caso->victimas()->delete();
+
+            // 3) Detalle del caso (PK = caso_id)
+            DB::table('detalle_caso')->where('caso_id', $caso->id)->delete();
+
+            // 4) Caso
+            $caso->delete();
+        });
+
+        return redirect()->route('casos.index')->with('ok', 'Caso eliminado correctamente.');
+    }
+	
+	
+	
 }

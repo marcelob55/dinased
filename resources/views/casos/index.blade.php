@@ -32,6 +32,21 @@
             <a href="{{ route('casos.show', $c) }}">Ver</a>
             <a href="{{ route('detalle.edit', $c) }}">Editar Caso Detalle</a>
             <a href="{{ route('segjudicial.create', $c->id) }}">Seg. judicial</a>
+			
+			
+			 {{-- Renombrar (Nombre del caso / label) --}}
+			<a href="#" class="js-rename" data-id="{{ $c->id }}" data-label="{{ $c->label }}">Renombrar</a>
+
+			{{-- Eliminar --}}
+			<form action="{{ route('casos.destroy', $c) }}" method="POST" class="inline js-del-form" style="display:inline">
+			@csrf @method('DELETE')
+			<button type="submit"
+				onclick="return confirm('¿Eliminar el caso {{ $c->numero_caso }} y TODO su contenido? Esta acción no se puede deshacer.')">
+			Eliminar
+			</button>
+			</form>
+			
+			
           </td>
         </tr>
       @endforeach
@@ -124,4 +139,34 @@
   mo.observe(document.documentElement, {childList:true, subtree:true});
 })();
 </script>
+
+<script>
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('.js-rename');
+  if (!btn) return;
+
+  e.preventDefault();
+  const id    = btn.dataset.id;
+  const label = btn.dataset.label || '';
+
+  const nuevo = prompt('Nuevo nombre del caso:', label);
+  if (nuevo === null) return;           // Cancelado
+  const val = (nuevo || '').trim();
+  if (!val) { alert('El nombre no puede estar vacío.'); return; }
+
+  // Crear y enviar form PATCH al vuelo
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `{{ url('/casos') }}/${id}/label`;
+  form.innerHTML = `
+    @csrf
+    @method('PATCH')
+    <input type="hidden" name="label" value="${val.replace(/"/g,'&quot;')}">
+  `;
+  document.body.appendChild(form);
+  form.submit();
+});
+</script>
+
+
 @endpush

@@ -11,6 +11,17 @@ use App\Http\Controllers\Auth\VerificationController;
 use App\Http\Controllers\Admin\UserReportController;
 use Illuminate\Support\Facades\Auth;
 
+/* ---------- editar rápido el nombre del caso y (b) eliminar un caso ---------- */
+
+
+Route::patch('/casos/{caso}/label', [CasoController::class, 'updateLabel'])
+    ->name('casos.updateLabel');
+
+Route::delete('/casos/{caso}', [CasoController::class, 'destroy'])
+    ->name('casos.destroy');
+
+
+
 
 use App\Http\Controllers\CasoWhatsappController;
 Route::get('casos/{caso}/whatsapp', [CasoWhatsappController::class, 'show'])
