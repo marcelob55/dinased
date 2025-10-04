@@ -58,7 +58,7 @@
 <div id="wtext" class="wrap">
 *{{ strtoupper(trim($D->verificacion ?? 'REPORTE')) }}*
 
-*{{ 'CÓDIGO ÚNICO:' }}* {{ $caso->numero_caso }}
+*{{ 'CÓDIGO ÚNICO:' }}* {{  $detalle->codigo_ecu ?? '—'  }}
 
 *DINASED Z{{ $zonaNum ?: '—' }}*
 *ZONA:* {{ $D->zona ?? '—' }}
