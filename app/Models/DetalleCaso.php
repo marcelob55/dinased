@@ -19,10 +19,12 @@ class DetalleCaso extends Model
     ];
 
     protected $casts = [
-        'entrevistas'=>'array','actividades'=>'array',
-        'fecha_hecho'=>'date','fecha_levantamiento'=>'date',
-        'hora_hecho'=>'datetime:H:i:s','hora_levantamiento'=>'datetime:H:i:s'
+    'entrevistas' => 'array',
+    'actividades' => 'array',
+	'fecha_hecho'=>'date','fecha_levantamiento'=>'date',
+    'hora_hecho'=>'datetime:H:i:s','hora_levantamiento'=>'datetime:H:i:s'
     ];
+	
 
     public function caso(){ return $this->belongsTo(Caso::class,'caso_id'); }
 }

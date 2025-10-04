@@ -14,6 +14,69 @@ class DetalleCasoController extends Controller
 public function edit(Caso $caso)
 {
     $detalle  = $caso->detalle;
+	
+	 // --- BLOQUE NUEVO: decodifica para los <textarea> ---
+	
+	
+	// --- Decodifica JSON (incluido doble-escape) y normaliza a texto plano ---
+$toTextarea = function ($val) {
+    // 1) Convertir a array de líneas
+    $arr = [];
+    if (is_array($val)) {
+        $arr = $val;
+    } elseif (is_string($val)) {
+        $tmp = json_decode($val, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $arr = is_array($tmp) ? $tmp : [$tmp];
+        } else {
+            $arr = [$val];
+        }
+    }
+
+    // 2) Función para des-escapar \uXXXX, \r\n y borrar invisibles como \u200e
+    $unescape = function ($s) {
+        if (!is_string($s)) return '';
+        $s = str_replace(["\\r\\n","\\n","\\r"], "\n", $s); // normaliza literales
+        if (strpos($s, '\\u') !== false) {
+            $s = preg_replace_callback('/\\\\u([0-9a-fA-F]{4})/', function ($m) {
+                $code = hexdec($m[1]);
+                return iconv('UCS-2BE','UTF-8', pack('n', $code));
+            }, $s);
+        }
+        $s = preg_replace('/[\x{200E}\x{200F}\x{202A}\x{202C}]/u','', $s); // invisibles
+        if (strlen($s) >= 2 && $s[0] === '"' && substr($s, -1) === '"') {
+            $s = substr($s, 1, -1); // comillas externas por doble JSON
+        }
+        // QUITA VIÑETAS (usa \x{2022} en lugar de \u2022)
+       // Reemplaza la línea de quitar viñetas por:
+		$s = preg_replace('/^[\-\*\x{2022}\x{25CF}\x{25AA}\x{25A0}\x{25E6}\x{00B7}\x{2013}]\s*/u', '', $s);
+
+        // Reemplaza la línea de quitar viñetas por:
+$s = preg_replace('/^[\-\*\x{2022}\x{25CF}\x{25AA}\x{25A0}\x{25E6}\x{00B7}\x{2013}]\s*/u', '', $s); // normaliza CRLF a LF
+        return trim($s);
+    };
+
+    $arr = array_map($unescape, $arr);
+    $arr = array_values(array_filter($arr, fn($x) => $x !== ''));
+
+    return implode("\n", $arr);
+};
+
+if ($detalle) {
+    $detalle->entrevistas = $toTextarea($detalle->entrevistas);
+    $detalle->actividades = $toTextarea($detalle->actividades);
+    // opcional: también puedes limpiar otros campos si lo necesitas:
+    // $detalle->circunstancias = $toTextarea([$detalle->circunstancias]);
+    // $detalle->justificacion  = $toTextarea([$detalle->justificacion]);
+}
+
+	
+	
+
+	
+	
+	 // --- FIN BLOQUE NUEVO ---
+
 
     // Trae todas las víctimas y normaliza los booleanos a "Sí"/"No"
     $victimas = $caso->victimas()
@@ -97,25 +160,37 @@ public function edit(Caso $caso)
             'hora_hecho'          => ['nullable'],
             'fecha_levantamiento' => ['nullable','date'],
             'hora_levantamiento'  => ['nullable'],
-            'entrevistas'         => ['nullable','array'],
-            'entrevistas.*'       => ['nullable','string'],
-            'actividades'         => ['nullable','array'],
-            'actividades.*'       => ['nullable','string'],
+            'entrevistas' 		  => ['nullable'],   // acepta string o array
+			'actividades'		  => ['nullable'],   // acepta string o array
+
 
             // arreglos de víctimas
             'fallecidos'          => ['nullable','array'],
             'heridos'             => ['nullable','array'],
         ]);
+		
+		// BLOQUE NUEVO
+		// Normaliza: acepta string o array; divide por líneas; quita viñetas y vacíos
+// ✅ QUEDAR ASÍ
+	$normMulti = function ($in) {
+		if (is_array($in)) $in = implode("\n", $in);
+		$lines = preg_split("/\r\n|\r|\n/", (string)$in);
+		$clean = array_map(function ($s) {
+			$s = trim($s);
+			// Reemplaza la línea de quitar viñetas por:
+			$s = preg_replace('/^[\-\*\x{2022}\x{25CF}\x{25AA}\x{25A0}\x{25E6}\x{00B7}\x{2013}]\s*/u', '', $s); // quita viñetas
+			return $s;
+		}, $lines);
+		return array_values(array_filter($clean, fn($s) => $s !== ''));
+	};
 
-        // Sanitiza arrays simples (los textareas llegan como array con 1 ítem)
-        $entrevistas = array_values(array_filter(
-            $r->input('entrevistas', []),
-            fn($v) => $v !== null && $v !== ''
-        ));
-        $actividades = array_values(array_filter(
-            $r->input('actividades', []),
-            fn($v) => $v !== null && $v !== ''
-        ));
+	$entrevistas = $normMulti($r->input('entrevistas', []));
+	$actividades = $normMulti($r->input('actividades', []));
+
+	// FIN BLOQUE NUEVO
+		
+		
+		
 
         // Mapa de booleanos estilo "Sí/No"
         $mapBool = function ($v) {
